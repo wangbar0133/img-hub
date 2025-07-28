@@ -1,0 +1,98 @@
+[
+  {
+    "id": "mountain-landscapes",
+    "title": "山川风光",
+    "description": "壮美的山川景色，记录大自然的磅礴气势和宁静美好",
+    "coverImage": "/images/travel/travel_1705123456789.jpg",
+    "category": "travel",
+    "featured": true,
+    "location": "四川、西藏",
+    "createdAt": "2024-01-15",
+    "photoCount": 3,
+    "photos": [
+      {
+        "id": 1705123456789,
+        "src": "/images/travel/travel_1705123456789.jpg",
+        "detailSrc": "/images/detail/travel_1705123456789.jpg",
+        "originalSrc": "/images/original/travel_1705123456789.jpg",
+        "thumbnail": "/images/thumbnails/travel/travel_1705123456789.jpg",
+        "alt": "晨光山峦",
+        "title": "晨光山峦",
+        "description": "清晨第一缕阳光洒向山峦的瞬间，金辉万丈",
+        "location": "四川稻城亚丁",
+        "camera": "Canon EOS R5",
+        "settings": "f/8, 1/125s, ISO 100",
+        "tags": ["日出", "山峰", "金光"]
+      },
+      {
+        "id": 1705123456790,
+        "src": "/images/travel/travel_1705123456790.jpg",
+        "detailSrc": "/images/detail/travel_1705123456790.jpg",
+        "originalSrc": "/images/original/travel_1705123456790.jpg",
+        "thumbnail": "/images/thumbnails/travel/travel_1705123456790.jpg",
+        "alt": "湖光山色",
+        "title": "湖光山色",
+        "description": "宁静的湖水映照着远山，如画般的美景",
+        "location": "西藏羊卓雍措",
+        "camera": "Canon EOS R5",
+        "settings": "f/11, 1/60s, ISO 200",
+        "tags": ["湖泊", "倒影", "西藏"]
+      },
+      {
+        "id": 1705123456791,
+        "src": "/images/travel/travel_1705123456791.jpg",
+        "detailSrc": "/images/detail/travel_1705123456791.jpg",
+        "originalSrc": "/images/original/travel_1705123456791.jpg",
+        "thumbnail": "/images/thumbnails/travel/travel_1705123456791.jpg",
+        "alt": "神秘森林",
+        "title": "神秘森林",
+        "description": "阳光穿过茂密森林的光影效果，神秘而迷人",
+        "location": "四川九寨沟",
+        "camera": "Canon EOS R5",
+        "settings": "f/5.6, 1/30s, ISO 400",
+        "tags": ["森林", "光影", "神秘"]
+      }
+    ]
+  },
+  {
+    "id": "cosplay-photography",
+    "title": "Cosplay摄影",
+    "description": "精美的角色扮演摄影作品，展现二次元世界的美好",
+    "coverImage": "/images/cosplay/cosplay_1708123456789.jpg",
+    "category": "cosplay",
+    "featured": true,
+    "location": "北京、上海",
+    "createdAt": "2024-02-20",
+    "photoCount": 2,
+    "photos": [
+      {
+        "id": 1708123456789,
+        "src": "/images/cosplay/cosplay_1708123456789.jpg",
+        "detailSrc": "/images/detail/cosplay_1708123456789.jpg",
+        "originalSrc": "/images/original/cosplay_1708123456789.jpg",
+        "thumbnail": "/images/thumbnails/cosplay/cosplay_1708123456789.jpg",
+        "alt": "动漫角色扮演",
+        "title": "梦幻少女",
+        "description": "精心制作的Cosplay服装与妆容",
+        "location": "北京摄影棚",
+        "camera": "Canon EOS R6",
+        "settings": "f/2.8, 1/160s, ISO 400",
+        "tags": ["Cosplay", "人像", "二次元"]
+      },
+      {
+        "id": 1708123456790,
+        "src": "/images/cosplay/cosplay_1708123456790.jpg",
+        "detailSrc": "/images/detail/cosplay_1708123456790.jpg",
+        "originalSrc": "/images/original/cosplay_1708123456790.jpg",
+        "thumbnail": "/images/thumbnails/cosplay/cosplay_1708123456790.jpg",
+        "alt": "古风人像",
+        "title": "古风韵味",
+        "description": "传统服饰与现代摄影的完美结合",
+        "location": "上海古镇",
+        "camera": "Canon EOS R6",
+        "settings": "f/1.8, 1/125s, ISO 200",
+        "tags": ["古风", "传统", "人像"]
+      }
+    ]
+  }
+] 

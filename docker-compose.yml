@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  img-hub:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: img-hub-app
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      # 挂载图片目录，实现持久化存储
+      - ./public/images:/usr/share/nginx/html/images:ro
+      - ./data:/usr/share/nginx/html/data:ro
+    environment:
+      - NODE_ENV=production
+    networks:
+      - img-hub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.img-hub.rule=Host(`localhost`)"
+      - "traefik.http.services.img-hub.loadbalancer.server.port=80"
+
+networks:
+  img-hub-network:
+    driver: bridge
+
+volumes:
+  img-storage:
+    driver: local
