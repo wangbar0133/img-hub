@@ -158,4 +158,63 @@ docker-compose up -d
 volumes:
   # 挂载整个public目录，包含images和albums.json
   - ./public:/usr/share/nginx/html/public:ro
-``` 
+```
+
+## 🐳 Docker 镜像优化
+
+### 数据分离策略
+
+**问题**：传统方式会将本地图片打包到镜像中，导致：
+- ❌ 镜像体积巨大（GB级别）
+- ❌ 内置文件与挂载文件冲突
+- ❌ 每次更新图片需要重建镜像
+
+**解决方案**：数据与应用完全分离
+- ✅ **`.dockerignore`**：排除 `public/images/` 和 `public/albums.json`
+- ✅ **Dockerfile**：构建时清空public目录，只保留空的目录结构
+- ✅ **挂载覆盖**：运行时挂载真实数据覆盖空目录
+
+### 构建过程详解
+
+```dockerfile
+# 第一阶段：构建Next.js应用
+FROM node:18-alpine AS builder
+COPY . .                    # 复制源码（excludes: public/images/, public/albums.json）
+RUN npm run build          # 生成静态文件到 /app/out
+
+# 第二阶段：生产镜像
+FROM nginx:alpine
+COPY --from=builder /app/out /usr/share/nginx/html
+
+# 🧹 关键步骤：清理public目录
+RUN rm -rf /usr/share/nginx/html/public/* && \
+    mkdir -p /usr/share/nginx/html/public/images/{travel,cosplay,detail,original} && \
+    mkdir -p /usr/share/nginx/html/public/images/thumbnails/{travel,cosplay} && \
+    echo "[]" > /usr/share/nginx/html/public/albums.json
+```
+
+### 验证镜像清洁性
+
+```bash
+# 构建镜像
+docker build -t img-hub-clean .
+
+# 检查镜像大小（应该很小）
+docker images img-hub-clean
+
+# 检查public目录（应该为空结构）
+docker run --rm img-hub-clean ls -la /usr/share/nginx/html/public/
+
+# 启动容器并挂载数据
+docker-compose up -d
+
+# 验证挂载后有数据
+docker exec img-hub-app ls -la /usr/share/nginx/html/public/
+```
+
+### 优势对比
+
+| 方案 | 镜像大小 | 更新方式 | 数据一致性 | 构建时间 |
+|------|----------|----------|------------|----------|
+| **传统方式** | 1-5GB+ | 重建镜像 | ❌ 可能冲突 | 5-10分钟 |
+| **分离方式** | 50-100MB | 仅挂载 | ✅ 完全同步 | 1-2分钟 | 

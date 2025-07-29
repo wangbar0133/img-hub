@@ -29,6 +29,14 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # 从构建阶段复制静态文件
 COPY --from=builder /app/out /usr/share/nginx/html
 
+# 清理public目录，确保镜像不包含任何内置资源文件
+# 只保留空的目录结构用于挂载
+RUN rm -rf /usr/share/nginx/html/public/* && \
+    mkdir -p /usr/share/nginx/html/public/images/{travel,cosplay,detail,original} && \
+    mkdir -p /usr/share/nginx/html/public/images/thumbnails/{travel,cosplay} && \
+    touch /usr/share/nginx/html/public/albums.json && \
+    echo "[]" > /usr/share/nginx/html/public/albums.json
+
 # 创建日志目录
 RUN mkdir -p /var/log/nginx
 
