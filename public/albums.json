@@ -22,7 +22,11 @@
         "location": "四川稻城亚丁",
         "camera": "Canon EOS R5",
         "settings": "f/8, 1/125s, ISO 100",
-        "tags": ["日出", "山峰", "金光"]
+        "tags": [
+          "日出",
+          "山峰",
+          "金光"
+        ]
       },
       {
         "id": 1705123456790,
@@ -36,7 +40,11 @@
         "location": "西藏羊卓雍措",
         "camera": "Canon EOS R5",
         "settings": "f/11, 1/60s, ISO 200",
-        "tags": ["湖泊", "倒影", "西藏"]
+        "tags": [
+          "湖泊",
+          "倒影",
+          "西藏"
+        ]
       },
       {
         "id": 1705123456791,
@@ -50,7 +58,11 @@
         "location": "四川九寨沟",
         "camera": "Canon EOS R5",
         "settings": "f/5.6, 1/30s, ISO 400",
-        "tags": ["森林", "光影", "神秘"]
+        "tags": [
+          "森林",
+          "光影",
+          "神秘"
+        ]
       }
     ]
   },
@@ -77,7 +89,11 @@
         "location": "北京摄影棚",
         "camera": "Canon EOS R6",
         "settings": "f/2.8, 1/160s, ISO 400",
-        "tags": ["Cosplay", "人像", "二次元"]
+        "tags": [
+          "Cosplay",
+          "人像",
+          "二次元"
+        ]
       },
       {
         "id": 1708123456790,
@@ -91,8 +107,67 @@
         "location": "上海古镇",
         "camera": "Canon EOS R6",
         "settings": "f/1.8, 1/125s, ISO 200",
-        "tags": ["古风", "传统", "人像"]
+        "tags": [
+          "古风",
+          "传统",
+          "人像"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "mechanic",
+    "title": "机械师",
+    "description": "",
+    "coverImage": "/images/cosplay/cosplay_1753755746318.jpg",
+    "category": "cosplay",
+    "featured": true,
+    "location": "",
+    "createdAt": "2025-07-29",
+    "photoCount": 3,
+    "photos": [
+      {
+        "id": 1753755746318,
+        "src": "/images/cosplay/cosplay_1753755746318.jpg",
+        "detailSrc": "/images/detail/cosplay_1753755746318.jpg",
+        "originalSrc": "/images/original/cosplay_1753755746318.jpg",
+        "thumbnail": "/images/thumbnails/cosplay/cosplay_1753755746318.jpg",
+        "alt": "_DSC0476",
+        "title": "_DSC0476",
+        "description": "",
+        "location": "",
+        "camera": "ILCE-7CM2",
+        "settings": "f/1.6, 1/160s, ISO 125",
+        "tags": []
+      },
+      {
+        "id": 1753755748735,
+        "src": "/images/cosplay/cosplay_1753755748735.jpg",
+        "detailSrc": "/images/detail/cosplay_1753755748735.jpg",
+        "originalSrc": "/images/original/cosplay_1753755748735.jpg",
+        "thumbnail": "/images/thumbnails/cosplay/cosplay_1753755748735.jpg",
+        "alt": "_DSC0477",
+        "title": "_DSC0477",
+        "description": "",
+        "location": "",
+        "camera": "ILCE-7CM2",
+        "settings": "f/1.6, 1/160s, ISO 125",
+        "tags": []
+      },
+      {
+        "id": 1753755750550,
+        "src": "/images/cosplay/cosplay_1753755750550.jpg",
+        "detailSrc": "/images/detail/cosplay_1753755750550.jpg",
+        "originalSrc": "/images/original/cosplay_1753755750550.jpg",
+        "thumbnail": "/images/thumbnails/cosplay/cosplay_1753755750550.jpg",
+        "alt": "_DSC0478",
+        "title": "_DSC0478",
+        "description": "",
+        "location": "",
+        "camera": "ILCE-7CM2",
+        "settings": "f/1.6, 1/160s, ISO 125",
+        "tags": []
       }
     ]
   }
-] 
+]
