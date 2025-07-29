@@ -10,9 +10,8 @@ services:
     ports:
       - "80:80"
     volumes:
-      # 挂载图片目录，实现持久化存储
-      - ./public/images:/usr/share/nginx/html/images:ro
-      - ./data:/usr/share/nginx/html/data:ro
+      # 挂载整个public目录，包含images和albums.json
+      - ./public:/usr/share/nginx/html/public:ro
     environment:
       - NODE_ENV=production
     networks:

@@ -1,5 +1,5 @@
 import { Album } from '@/types'
-import albumsData from './albums.json'
+import albumsData from '../public/albums.json'
 
 // 从JSON文件导入数据
 export const sampleAlbums: Album[] = albumsData as Album[]
@@ -14,7 +14,7 @@ export const getAlbumById = (id: string): Album | undefined => {
   return sampleAlbums.find(album => album.id === id)
 }
 
-// 获取特色影集
+// 获取精选影集
 export const getFeaturedAlbums = (): Album[] => {
   return sampleAlbums.filter(album => album.featured)
 }

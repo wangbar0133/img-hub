@@ -125,63 +125,34 @@ img-hub/
 └── next.config.js          # 静态导出 + 优化配置
 ```
 
-## 🎨 内容管理
+### 内容管理
 
-### 影集管理
+本项目提供了自动化的内容管理工具：
 
-编辑 `data/albums.ts` 添加新影集：
-
+#### `albums.ts` 数据接口
 ```typescript
-{
-  id: 'your-album-id',
-  title: '影集标题',
-  description: '影集描述',
-  coverImage: 'https://...',
-  category: 'travel', // 或 'cosplay'
-  featured: true,     // 是否在首页展示
-  photos: [
-    {
-      id: 1,
-      src: '/images/travel/photo1.jpg',
-      detailSrc: '/images/detail/photo1.jpg',
-      originalSrc: '/images/original/photo1.jpg',
-      thumbnail: '/images/thumbnails/photo1.jpg',
-      title: '照片标题',
-      alt: '照片描述',
-      camera: 'Canon EOS R5',
-      settings: 'f/8, 1/125s, ISO 100',
-      tags: ['标签1', '标签2']
-    }
-  ]
-}
+// data/albums.ts - 影集数据接口
+import albumsData from '../public/albums.json'
+export const sampleAlbums: Album[] = albumsData
 ```
 
-### 图片处理工具
+#### `albums.json` 数据文件
+位置：`public/albums.json`
+- 存储所有影集和照片的结构化数据
+- 包含EXIF信息、分类、标签等元数据
+- 通过Docker挂载自动同步到服务器
 
-使用统一的图片管理脚本：
+#### 图片管理脚本
+**Python版本（推荐）：** `scripts/img-manager.py`
+- 自动处理图片（四层尺寸优化）
+- 原图无损保存（100%质量）
+- 自动更新 `public/albums.json`
+- 交互式操作界面
 
-```bash
-# 交互式上传（推荐新手）
-./scripts/img-manager.sh
-
-# 快速上传到现有影集
-./scripts/img-manager.sh upload ./my-photos/ mountain-landscapes
-
-# 上传单张图片
-./scripts/img-manager.sh upload ./photo.jpg
-
-# 创建新影集
-./scripts/img-manager.sh create
-
-# 查看现有影集
-./scripts/img-manager.sh list
-
-# 部署到服务器
-./scripts/img-manager.sh deploy
-
-# 查看帮助
-./scripts/img-manager.sh help
-```
+**Bash版本：** `scripts/img-manager.sh`  
+- 传统Shell脚本，功能完整
+- 依赖 `jq` 处理JSON数据
+- 支持远程部署
 
 ### 图片优化设置
 

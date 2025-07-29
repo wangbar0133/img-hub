@@ -17,7 +17,7 @@ NC='\033[0m'
 
 # 配置
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ALBUMS_JSON="$PROJECT_ROOT/data/albums.json"
+ALBUMS_JSON="$PROJECT_ROOT/public/albums.json"
 IMAGES_DIR="$PROJECT_ROOT/public/images"
 ORIGINAL_DIR="$IMAGES_DIR/original"
 THUMBNAILS_DIR="$IMAGES_DIR/thumbnails"
@@ -558,11 +558,8 @@ EOF
         rsync_opts="$rsync_opts -e 'ssh -i $SSH_KEY'"
     fi
     
-    log_info "同步图片文件..."
-    eval "rsync $rsync_opts '$IMAGES_DIR/' '$DEPLOY_HOST:$DEPLOY_PATH/public/images/'"
-    
-    log_info "同步数据文件..."
-    eval "rsync $rsync_opts '$ALBUMS_JSON' '$DEPLOY_HOST:$DEPLOY_PATH/data/'"
+    log_info "同步public目录（包含图片和数据文件）..."
+    eval "rsync $rsync_opts '$PROJECT_ROOT/public/' '$DEPLOY_HOST:$DEPLOY_PATH/public/'"
     
     # 重新构建应用
     log_info "重新构建应用..."

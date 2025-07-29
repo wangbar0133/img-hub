@@ -128,3 +128,34 @@ Python 版本为未来扩展提供了更好的基础：
 - 🌐 Web API 集成
 - 🔍 图片相似度检测
 - 📱 移动端适配检测 
+
+## 🔄 数据管理流程
+
+### 新的简化流程（v3.1.0+）
+
+1. **数据存储位置**：`public/albums.json`
+2. **Docker挂载**：整个 `public` 目录
+3. **自动同步**：上传图片时直接更新Docker挂载的数据
+
+```bash
+# 1. 本地处理图片
+python3 scripts/img-manager.py local-test
+
+# 2. Docker自动使用最新数据（无需手动同步）
+docker-compose up -d
+
+# 3. 数据一致性：本地 = 容器 = 服务器
+```
+
+### 优势
+- ✅ **数据一致性**：本地和远程始终同步
+- ✅ **简化部署**：无需单独同步JSON文件
+- ✅ **实时更新**：图片上传后立即生效
+- ✅ **减少错误**：避免手动Git提交遗漏
+
+### Docker挂载配置
+```yaml
+volumes:
+  # 挂载整个public目录，包含images和albums.json
+  - ./public:/usr/share/nginx/html/public:ro
+``` 

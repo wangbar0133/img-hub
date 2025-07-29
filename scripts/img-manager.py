@@ -31,7 +31,7 @@ class ImgManager:
         # 配置
         self.script_dir = Path(__file__).parent
         self.project_root = self.script_dir.parent
-        self.albums_json = self.project_root / "data" / "albums.json"
+        self.albums_json = self.project_root / "public" / "albums.json"
         self.images_dir = self.project_root / "public" / "images"
         self.original_dir = self.images_dir / "original"
         self.thumbnails_dir = self.images_dir / "thumbnails"
