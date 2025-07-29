@@ -1,0 +1,18 @@
+# ImgHub Python版本依赖
+# 注意：除了Python包，还需要系统级依赖：
+# - ImageMagick (convert, identify)
+# - ExifTool (exiftool)
+
+# 核心依赖（Python标准库已包含）
+# json
+# pathlib
+# subprocess
+# argparse
+# tempfile
+# datetime
+# typing
+
+# 系统依赖安装命令：
+# macOS: brew install imagemagick exiftool
+# Ubuntu: sudo apt install imagemagick libimage-exiftool-perl
+# Windows: 下载安装 ImageMagick 和 ExifTool 
