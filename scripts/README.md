@@ -12,6 +12,7 @@
 - ✅ 原生 JSON 处理，无需额外工具
 - ✅ 跨平台兼容性更好
 - ✅ 面向对象设计，易于扩展
+- ⭐ **原图无损保存**：完全不压缩，保持100%原始质量
 
 ### 使用方法
 ```bash
@@ -78,6 +79,7 @@ sudo apt install imagemagick libimage-exiftool-perl
 | 跨平台 | ✅ 好 | ⚠️ 一般 |
 | 类型安全 | ✅ | ❌ |
 | 代码维护 | ✅ 易 | ⚠️ 中等 |
+| 原图处理 | ⭐ 无损保存 | ⚠️ 压缩95% |
 
 ## 🚀 迁移建议
 
@@ -86,6 +88,35 @@ sudo apt install imagemagick libimage-exiftool-perl
 1. **保持数据兼容** - 两个版本使用相同的数据格式
 2. **逐步迁移** - 可以并行使用两个版本
 3. **测试验证** - 在本地充分测试后再切换
+
+## 🖼️ 原图处理说明
+
+Python版本默认对原图采用**无损保存**策略：
+
+### 默认行为（推荐）
+- ✅ **完全不压缩**：原图使用 `shutil.copy2()` 直接复制
+- ✅ **保持原始质量**：100% 无损，包括EXIF数据
+- ✅ **保持原始尺寸**：不限制图片大小
+- ✅ **保持原始格式**：JPG/PNG/WebP等格式完全保持
+
+### 验证方法
+```bash
+# 处理前后文件大小对比
+ls -lh /path/to/original/image.jpg
+ls -lh ./public/images/original/category_timestamp.jpg
+
+# 应该看到文件大小完全相同
+```
+
+### 高级配置（可选）
+如果确实需要压缩原图（不推荐），可以创建自定义配置：
+
+```python
+# 修改 scripts/img-config-example.py
+self.compress_original = True      # 启用原图压缩
+self.original_max_size = 3000      # 最大尺寸
+self.original_quality = 98         # 压缩质量
+```
 
 ## 💡 扩展功能
 

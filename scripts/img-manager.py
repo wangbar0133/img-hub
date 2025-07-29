@@ -2,7 +2,7 @@
 """
 ImgHub 统一图片管理工具 (Python版本)
 集成图片处理、影集管理、自动部署的完整解决方案
-版本: 3.0.0
+版本: 3.1.0
 """
 
 import os
@@ -45,6 +45,10 @@ class ImgManager:
         self.display_quality = 85
         self.detail_quality = 90
         self.original_quality = 95
+        
+        # 原图处理配置
+        self.compress_original = False  # 默认不压缩原图
+        self.original_max_size = 2000   # 如果压缩，最大尺寸限制
         
         # 支持的分类
         self.categories = ["travel", "cosplay"]
@@ -158,6 +162,15 @@ class ImgManager:
         
         subprocess.run(cmd, check=True)
 
+    def copy_original_image(self, input_file: Path, output_file: Path):
+        """复制原图，不进行任何压缩或处理"""
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+        
+        # 使用shutil.copy2保持文件的元数据
+        shutil.copy2(input_file, output_file)
+        
+        self.log_info(f"原图已保存: {output_file.name} (无压缩)")
+
     def generate_thumbnail(self, input_file: Path, output_file: Path):
         """生成正方形缩略图"""
         output_file.parent.mkdir(parents=True, exist_ok=True)
@@ -244,10 +257,15 @@ class ImgManager:
             self.compress_image(image_path, detail_path, 
                               self.detail_size, self.detail_quality)
             
-            # 原图
+            # 原图处理
             original_path = self.original_dir / filename
-            self.compress_image(image_path, original_path, 
-                              2000, self.original_quality)
+            if self.compress_original:
+                # 压缩原图
+                self.compress_image(image_path, original_path, 
+                                  self.original_max_size, self.original_quality)
+            else:
+                # 不压缩，直接复制原图
+                self.copy_original_image(image_path, original_path)
             
             # 缩略图
             thumbnail_path = self.thumbnails_dir / category / filename
@@ -643,7 +661,7 @@ class ImgManager:
     def show_help(self):
         """显示帮助信息"""
         print(f"""
-{Colors.CYAN}ImgHub 图片管理工具 v3.0.0{Colors.NC}
+{Colors.CYAN}ImgHub 图片管理工具 v3.1.0{Colors.NC}
 {Colors.YELLOW}Python版本 - 更稳定，更易用{Colors.NC}
 
 {Colors.GREEN}用法:{Colors.NC}
@@ -661,6 +679,7 @@ class ImgManager:
   • 🎨 JSON 数据自动管理
   • 🔄 交互式操作界面
   • 🚀 本地预览服务
+  • ⭐ 原图无损保存（不压缩，保持原始质量）
 
 {Colors.GREEN}依赖工具:{Colors.NC}
   • ImageMagick (convert, identify)
