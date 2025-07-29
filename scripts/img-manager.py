@@ -37,6 +37,9 @@ class ImgManager:
         self.thumbnails_dir = self.images_dir / "thumbnails"
         self.detail_dir = self.images_dir / "detail"
         
+        # ECS配置文件
+        self.deploy_config_file = self.project_root / ".env.deploy"
+        
         # 图片处理参数
         self.thumbnail_size = 400
         self.display_size = 800
@@ -570,11 +573,12 @@ class ImgManager:
         """本地测试模式"""
         self.log_step("本地测试模式")
         self.log_info("此模式将在本地处理图片并更新数据，但不部署到服务器")
-        print()
         
+        # 显示当前影集
         self.show_albums()
         
-        print("请选择测试操作:")
+        print()
+        self.log_info("请选择测试操作:")
         print("  1. 添加图片到现有影集（本地测试）")
         print("  2. 创建新影集并添加图片（本地测试）")
         print("  3. 启动本地预览服务")
@@ -585,41 +589,81 @@ class ImgManager:
         try:
             choice = input("请选择 (1-5): ").strip()
             
-            if choice == "1":
-                album_id = self.select_album()
-                if album_id:
-                    photos_path = input("图片路径 (文件或目录): ").strip()
-                    is_directory = Path(photos_path).is_dir()
-                    
-                    if self.add_photos_to_album(photos_path, album_id, is_directory):
-                        self.log_success("图片已添加到本地影集，数据已更新")
-                        self.ask_local_preview()
-                        
-            elif choice == "2":
-                album_id = self.create_album()
-                if album_id:
-                    photos_path = input("图片路径 (文件或目录): ").strip()
-                    is_directory = Path(photos_path).is_dir()
-                    
-                    if self.add_photos_to_album(photos_path, album_id, is_directory):
-                        self.log_success("新影集已创建，图片已处理，数据已保存到本地")
-                        self.ask_local_preview()
-                        
-            elif choice == "3":
+            if choice == '1':
+                if self.add_photos_interactive():
+                    self.ask_ecs_upload()
+            elif choice == '2':
+                if self.create_new_album_interactive():
+                    self.ask_ecs_upload()
+            elif choice == '3':
                 self.start_local_preview()
-                
-            elif choice == "4":
+            elif choice == '4':
                 self.show_data_status()
-                
-            elif choice == "5":
-                self.log_info("退出本地测试模式")
-                return
-                
+            elif choice == '5':
+                self.log_info("退出程序")
             else:
-                self.log_error("无效选择")
-                
+                self.log_warning("无效选择")
         except KeyboardInterrupt:
             self.log_info("\n操作已取消")
+
+    def ask_ecs_upload(self):
+        """询问是否上传到ECS"""
+        print()
+        try:
+            # 检查是否有ECS配置
+            config = self.load_deploy_config()
+            
+            if config.get('ECS_HOST'):
+                # 有配置，直接询问是否上传
+                upload_choice = input("是否立即上传到ECS服务器？(y/N): ").strip().lower()
+                if upload_choice in ['y', 'yes']:
+                    if self.check_deploy_dependencies():
+                        self.deploy_to_ecs()
+                    else:
+                        self.log_error("部署依赖缺失，无法上传")
+                else:
+                    self.log_info("您可以稍后运行 'python scripts/img-manager.py deploy' 手动上传")
+            else:
+                # 无配置，询问是否要配置并上传
+                config_choice = input("是否配置ECS并立即上传？(y/N): ").strip().lower()
+                if config_choice in ['y', 'yes']:
+                    if self.check_deploy_dependencies():
+                        config = self.interactive_ecs_config()
+                        if config.get('ECS_HOST'):
+                            self.deploy_to_ecs()
+                    else:
+                        self.log_error("部署依赖缺失，无法配置ECS")
+                else:
+                    self.log_info("您可以稍后运行 'python scripts/img-manager.py ecs-config' 配置ECS")
+                    
+        except KeyboardInterrupt:
+            self.log_info("\n操作已取消")
+
+    def add_photos_interactive(self) -> bool:
+        """交互式添加图片到现有影集"""
+        album_id = self.select_album()
+        if album_id:
+            photos_path = input("图片路径 (文件或目录): ").strip()
+            is_directory = Path(photos_path).is_dir()
+            
+            if self.add_photos_to_album(photos_path, album_id, is_directory):
+                self.log_success("图片已添加到本地影集，数据已更新")
+                self.ask_local_preview()
+                return True
+        return False
+    
+    def create_new_album_interactive(self) -> bool:
+        """交互式创建新影集并添加图片"""
+        album_id = self.create_album()
+        if album_id:
+            photos_path = input("图片路径 (文件或目录): ").strip()
+            is_directory = Path(photos_path).is_dir()
+            
+            if self.add_photos_to_album(photos_path, album_id, is_directory):
+                self.log_success("新影集已创建，图片已处理，数据已保存到本地")
+                self.ask_local_preview()
+                return True
+        return False
 
     def ask_local_preview(self):
         """询问是否启动本地预览"""
@@ -633,11 +677,179 @@ class ImgManager:
         except KeyboardInterrupt:
             self.log_info("\n操作已取消")
 
+    # ==================== ECS 部署功能 ====================
+    
+    def load_deploy_config(self) -> Dict[str, str]:
+        """加载ECS部署配置"""
+        config = {}
+        if self.deploy_config_file.exists():
+            try:
+                with open(self.deploy_config_file, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith('#') and '=' in line:
+                            key, value = line.split('=', 1)
+                            config[key.strip()] = value.strip().strip('"\'')
+            except Exception as e:
+                self.log_warning(f"读取配置文件失败: {e}")
+        return config
+    
+    def save_deploy_config(self, config: Dict[str, str]):
+        """保存ECS部署配置"""
+        try:
+            with open(self.deploy_config_file, 'w', encoding='utf-8') as f:
+                f.write("# ImgHub ECS 部署配置\n")
+                for key, value in config.items():
+                    f.write(f'{key}="{value}"\n')
+            self.log_success(f"配置已保存到 {self.deploy_config_file}")
+        except Exception as e:
+            self.log_error(f"保存配置文件失败: {e}")
+    
+    def interactive_ecs_config(self) -> Dict[str, str]:
+        """交互式ECS配置"""
+        self.log_step("ECS 部署配置")
+        config = self.load_deploy_config()
+        
+        # ECS连接信息
+        if not config.get('ECS_HOST'):
+            config['ECS_HOST'] = input("ECS 主机地址 (IP或域名): ").strip()
+        
+        if not config.get('ECS_USER'):
+            user = input("ECS 用户名 [root]: ").strip()
+            config['ECS_USER'] = user if user else 'root'
+        
+        if not config.get('SSH_KEY'):
+            ssh_key = input("SSH 私钥路径 (可选): ").strip()
+            if ssh_key:
+                config['SSH_KEY'] = ssh_key
+        
+        if not config.get('DEPLOY_PATH'):
+            path = input("ECS 部署路径 [/opt/img-hub]: ").strip()
+            config['DEPLOY_PATH'] = path if path else '/opt/img-hub'
+        
+        # 保存配置
+        self.save_deploy_config(config)
+        return config
+    
+    def ssh_exec(self, command: str, config: Dict[str, str]) -> bool:
+        """执行SSH命令"""
+        try:
+            ssh_cmd = ['ssh']
+            if config.get('SSH_KEY'):
+                ssh_cmd.extend(['-i', config['SSH_KEY']])
+            ssh_cmd.append(f"{config['ECS_USER']}@{config['ECS_HOST']}")
+            ssh_cmd.append(command)
+            
+            result = subprocess.run(ssh_cmd, capture_output=True, text=True)
+            if result.returncode != 0:
+                self.log_error(f"SSH命令执行失败: {result.stderr}")
+                return False
+            return True
+        except Exception as e:
+            self.log_error(f"SSH连接失败: {e}")
+            return False
+    
+    def check_ecs_connection(self, config: Dict[str, str]) -> bool:
+        """检查ECS连接"""
+        self.log_step("检查ECS连接...")
+        if self.ssh_exec("echo 'ECS连接测试成功'", config):
+            self.log_success("ECS连接正常")
+            return True
+        else:
+            self.log_error("无法连接到ECS，请检查配置")
+            return False
+    
+    def sync_to_ecs(self, config: Dict[str, str]) -> bool:
+        """同步数据到ECS"""
+        self.log_step("同步数据到ECS...")
+        
+        try:
+            # 检查本地数据
+            if not self.albums_json.exists():
+                self.log_warning("本地albums.json不存在，创建空文件")
+                self.albums_json.write_text("[]", encoding='utf-8')
+            
+            # 构建rsync命令
+            rsync_cmd = ['rsync', '-avz', '--progress']
+            
+            if config.get('SSH_KEY'):
+                rsync_cmd.extend(['-e', f"ssh -i {config['SSH_KEY']}"])
+            
+            # 源路径：本地public目录
+            source = str(self.project_root / "public") + "/"
+            # 目标路径：ECS上的部署目录
+            target = f"{config['ECS_USER']}@{config['ECS_HOST']}:{config['DEPLOY_PATH']}/public/"
+            
+            rsync_cmd.extend([source, target])
+            
+            self.log_info("同步public目录（包含图片和数据文件）...")
+            self.log_info(f"命令: {' '.join(rsync_cmd)}")
+            
+            result = subprocess.run(rsync_cmd)
+            if result.returncode == 0:
+                self.log_success("数据同步完成")
+                return True
+            else:
+                self.log_error("数据同步失败")
+                return False
+                
+        except Exception as e:
+            self.log_error(f"同步过程出错: {e}")
+            return False
+    
+    def restart_ecs_service(self, config: Dict[str, str]) -> bool:
+        """重启ECS上的服务"""
+        self.log_step("重启ECS服务...")
+        command = f"cd {config['DEPLOY_PATH']} && docker-compose restart"
+        if self.ssh_exec(command, config):
+            self.log_success("服务重启完成")
+            return True
+        else:
+            self.log_error("服务重启失败")
+            return False
+    
+    def deploy_to_ecs(self):
+        """部署到ECS的完整流程"""
+        try:
+            # 加载或配置ECS信息
+            config = self.load_deploy_config()
+            if not config.get('ECS_HOST'):
+                config = self.interactive_ecs_config()
+            
+            # 显示配置信息
+            self.log_info("当前ECS配置:")
+            self.log_info(f"  主机: {config.get('ECS_HOST')}")
+            self.log_info(f"  用户: {config.get('ECS_USER')}")
+            self.log_info(f"  路径: {config.get('DEPLOY_PATH')}")
+            
+            # 检查连接
+            if not self.check_ecs_connection(config):
+                return False
+            
+            # 同步数据
+            if not self.sync_to_ecs(config):
+                return False
+            
+            # 重启服务
+            if not self.restart_ecs_service(config):
+                return False
+            
+            self.log_success("🎉 ECS部署完成！")
+            self.log_info(f"访问地址: http://{config['ECS_HOST']}")
+            return True
+            
+        except KeyboardInterrupt:
+            self.log_info("\n部署已取消")
+            return False
+        except Exception as e:
+            self.log_error(f"部署过程出错: {e}")
+            return False
+
     def main(self):
         """主函数"""
         parser = argparse.ArgumentParser(description="ImgHub 图片管理工具")
         parser.add_argument('command', nargs='?', choices=[
-            'local-test', 'local-preview', 'status', 'help'
+            'local-test', 'local-preview', 'status', 'deploy', 'ecs-config', 'help'
         ], default='help', help='命令')
         
         args = parser.parse_args()
@@ -657,12 +869,39 @@ class ImgManager:
                 sys.exit(1)
             self.init_directories()
             self.local_test_mode()
+        elif args.command == 'deploy':
+            if not self.check_deploy_dependencies():
+                sys.exit(1)
+            self.deploy_to_ecs()
+        elif args.command == 'ecs-config':
+            config = self.interactive_ecs_config()
+            self.log_success("ECS配置已更新")
+        
+    def check_deploy_dependencies(self) -> bool:
+        """检查部署相关依赖"""
+        deps = ["rsync", "ssh"]
+        missing = []
+        
+        for dep in deps:
+            try:
+                subprocess.run([dep, '--version'], capture_output=True, check=True)
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                missing.append(dep)
+        
+        if missing:
+            self.log_error(f"缺少部署依赖: {', '.join(missing)}")
+            self.log_info("请安装缺少的依赖:")
+            self.log_info("macOS: brew install rsync openssh")
+            self.log_info("Ubuntu: sudo apt install rsync openssh-client")
+            return False
+        
+        return True
         
     def show_help(self):
         """显示帮助信息"""
         print(f"""
-{Colors.CYAN}ImgHub 图片管理工具 v3.1.0{Colors.NC}
-{Colors.YELLOW}Python版本 - 更稳定，更易用{Colors.NC}
+{Colors.CYAN}ImgHub 图片管理工具 v4.0.0{Colors.NC}
+{Colors.YELLOW}Python版本 - 图片处理 + ECS部署一体化{Colors.NC}
 
 {Colors.GREEN}用法:{Colors.NC}
   python scripts/img-manager.py [命令]
@@ -670,6 +909,8 @@ class ImgManager:
 {Colors.GREEN}可用命令:{Colors.NC}
   local-test      本地测试模式（处理图片并保存到本地）
   local-preview   启动本地预览服务
+  deploy          部署到ECS服务器
+  ecs-config      配置ECS连接信息
   status          查看当前数据状态
   help            显示此帮助信息
 
@@ -678,19 +919,28 @@ class ImgManager:
   • 📊 EXIF 数据自动提取
   • 🎨 JSON 数据自动管理
   • 🔄 交互式操作界面
-  • 🚀 本地预览服务
-  • ⭐ 原图无损保存（不压缩，保持原始质量）
+  • 🚀 一键部署到ECS
+  • ⭐ 原图无损保存（100%质量）
 
-{Colors.GREEN}依赖工具:{Colors.NC}
+{Colors.GREEN}典型工作流程:{Colors.NC}
+  1. python scripts/img-manager.py local-test     # 处理图片
+  2. python scripts/img-manager.py deploy        # 部署到ECS
+
+{Colors.GREEN}ECS部署配置:{Colors.NC}
+  • 首次使用会提示输入ECS连接信息
+  • 配置保存在 .env.deploy 文件中
+  • 支持SSH密钥和密码登录方式
+
+{Colors.GREEN}依赖要求:{Colors.NC}
+  • Python 3.6+
   • ImageMagick (convert, identify)
   • ExifTool (exiftool)
-  • Node.js & npm (本地预览)
+  • rsync, ssh (部署功能)
 
-{Colors.GREEN}示例:{Colors.NC}
-  python scripts/img-manager.py local-test     # 本地测试
-  python scripts/img-manager.py status        # 查看状态
-  python scripts/img-manager.py local-preview # 预览网站
-        """)
+{Colors.GREEN}安装依赖:{Colors.NC}
+  macOS: brew install imagemagick exiftool rsync openssh
+  Ubuntu: sudo apt install imagemagick libimage-exiftool-perl rsync openssh-client
+""")
 
 if __name__ == "__main__":
     manager = ImgManager()

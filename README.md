@@ -182,11 +182,31 @@ export const sampleAlbums: Album[] = albumsData
 - 原图无损保存（100%质量）
 - 自动更新 `public/albums.json`
 - 交互式操作界面
+- **🆕 一键ECS部署功能**
 
-**Bash版本：** `scripts/img-manager.sh`  
-- 传统Shell脚本，功能完整
-- 依赖 `jq` 处理JSON数据
-- 支持远程部署
+**使用方法**:
+```bash
+# 本地图片处理和测试（支持ECS上传）
+python3 scripts/img-manager.py local-test
+
+# 一键部署到ECS
+python3 scripts/img-manager.py deploy
+
+# 配置ECS连接信息  
+python3 scripts/img-manager.py ecs-config
+
+# 查看数据状态
+python3 scripts/img-manager.py status
+
+# 启动本地预览
+python3 scripts/img-manager.py local-preview
+```
+
+**工作流程**:
+1. `local-test` - 处理图片后询问是否上传ECS
+2. `deploy` - 独立执行ECS部署
+
+**注意**: ~~旧的 `img-manager.sh` 已废弃~~，Python版本现已集成ECS部署功能。
 
 ### 图片优化设置
 
