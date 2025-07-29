@@ -33,7 +33,7 @@ python3 scripts/img-manager.py local-test
 - ✅ **EXIF数据提取**：自动提取相机信息、拍摄参数等
 - ✅ **JSON数据管理**：自动更新 `public/albums.json`
 - ✅ **交互式界面**：友好的用户操作体验
-- ✅ **一键ECS部署**：集成rsync+ssh，自动同步到ECS
+- ✅ **ECS远程构建**：同步源码到ECS，远程Docker构建部署
 - ⭐ **原图无损保存**：100%保持原始质量，不进行任何压缩
 
 ### 使用方法
@@ -44,7 +44,7 @@ python3 scripts/img-manager.py help
 # 本地测试模式（主要功能）
 python3 scripts/img-manager.py local-test
 
-# 一键部署到ECS
+# ECS远程构建部署
 python3 scripts/img-manager.py deploy
 
 # 配置ECS连接信息
@@ -64,26 +64,46 @@ python3 scripts/img-manager.py local-test
 
 # 2. 或者分步操作
 python3 scripts/img-manager.py local-test  # 仅本地处理
-python3 scripts/img-manager.py deploy      # 单独部署
+python3 scripts/img-manager.py deploy      # ECS远程构建
 ```
 
+### ECS远程构建方案
+**新特性**：无需本地Docker环境，所有构建在ECS完成
+
+**工作流程**：
+1. **源码同步**：rsync同步整个项目到ECS
+2. **远程构建**：ECS上执行 `docker build`
+3. **自动部署**：更新docker-compose并重启服务
+
+**优势**：
+- ✅ **无需本地Docker**：本地只需要Python和基础工具
+- ✅ **构建速度快**：ECS网络环境通常更好
+- ✅ **部署一致性**：构建和运行在同一环境
+- ✅ **节省带宽**：不需要传输大型镜像文件
+
 ### 依赖要求
-- **基础功能**: Python 3.6+, ImageMagick, ExifTool
-- **ECS部署**: rsync, ssh
+- **本地环境**: Python 3.6+, ImageMagick, ExifTool, rsync, ssh
+- **ECS环境**: Docker, Docker Compose
 
 ```bash
-# macOS 安装依赖
+# 本地 macOS 安装依赖
 brew install imagemagick exiftool rsync openssh
 
-# Ubuntu 安装依赖
+# 本地 Ubuntu 安装依赖
 sudo apt install imagemagick libimage-exiftool-perl rsync openssh-client
+
+# ECS Docker 安装（Ubuntu示例）
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
 ```
 
 ### ECS配置说明
 - **配置文件**: `.env.deploy` (自动生成)
 - **支持方式**: SSH密钥 / 密码登录
-- **同步方式**: rsync增量同步，速度快
-- **自动重启**: 同步后自动重启Docker容器
+- **同步方式**: rsync同步源码，排除不必要文件
+- **构建方式**: ECS上Docker远程构建
 
 **配置示例**:
 ```bash
@@ -92,6 +112,18 @@ ECS_HOST="123.456.789.10"
 ECS_USER="root"
 SSH_KEY="/path/to/your/private/key"  # 可选
 DEPLOY_PATH="/opt/img-hub"
+```
+
+### 部署流程详解
+```mermaid
+graph TD
+    A[本地处理图片] --> B[python3 deploy]
+    B --> C[同步源码到ECS]
+    C --> D[检查ECS Docker环境]
+    D --> E[ECS执行docker build]
+    E --> F[更新docker-compose.yml]
+    F --> G[重启容器服务]
+    G --> H[部署完成]
 ```
 
 ## 🚀 ECS 部署工具 (活跃)
@@ -177,36 +209,53 @@ python3 scripts/img-manager.py local-test    # 图片处理
 
 ### 数据流向
 
+**ECS远程构建架构**：
 ```mermaid
 graph TD
     A[本地图片文件] --> B[Python脚本处理]
     B --> C[public/albums.json]
     B --> D[public/images/各层级图片]
-    C --> E[部署脚本同步]
+    C --> E[rsync同步源码]
     D --> E
-    E --> F[ECS: /opt/img-hub/public/]
-    F --> G[Docker容器挂载]
-    G --> H[Web服务访问]
+    E --> F[ECS: /opt/img-hub/项目代码]
+    F --> G[ECS: docker build]
+    G --> H[ECS: 本地镜像]
+    H --> I[docker-compose启动]
+    I --> J[Web服务访问]
 ```
 
 ## 🔄 数据管理流程
 
-### 完整的数据同步机制
+### ECS远程构建的数据同步机制
 
 1. **本地处理**: Python脚本生成4层图片并更新JSON
-2. **ECS同步**: 部署脚本通过rsync同步到ECS
-3. **容器挂载**: Docker自动挂载ECS本地数据
-4. **Web访问**: Nginx提供图片和数据的Web访问
+2. **源码同步**: rsync同步整个项目到ECS
+3. **远程构建**: ECS上执行docker build生成镜像
+4. **服务部署**: 更新docker-compose并启动容器
+5. **Web访问**: Nginx提供图片和数据的Web访问
 
 ### 存储位置
 ```
+本地:     ./项目根目录          →  ECS: /opt/img-hub/
 本地:     ./public/albums.json  →  ECS: /opt/img-hub/public/albums.json
 本地:     ./public/images/      →  ECS: /opt/img-hub/public/images/
+本地:     ./Dockerfile          →  ECS: /opt/img-hub/Dockerfile
+```
+
+### Docker镜像构建
+```bash
+# ECS上的构建过程
+cd /opt/img-hub
+docker build -t img-hub:latest .
+docker-compose up -d
 ```
 
 ### Docker挂载配置
 ```yaml
-volumes:
-  # 挂载整个public目录，包含images和albums.json
-  - /opt/img-hub/public:/usr/share/nginx/html/public:ro
+# ECS上的docker-compose.yml
+services:
+  img-hub:
+    image: img-hub:latest  # 使用本地构建的镜像
+    volumes:
+      - /opt/img-hub/public:/usr/share/nginx/html/public:ro
 ``` 

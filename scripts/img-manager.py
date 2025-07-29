@@ -760,8 +760,8 @@ class ImgManager:
             return False
     
     def sync_to_ecs(self, config: Dict[str, str]) -> bool:
-        """同步数据到ECS"""
-        self.log_step("同步数据到ECS...")
+        """同步源码到ECS进行远程构建"""
+        self.log_step("同步源码到ECS...")
         
         try:
             # 检查本地数据
@@ -769,47 +769,123 @@ class ImgManager:
                 self.log_warning("本地albums.json不存在，创建空文件")
                 self.albums_json.write_text("[]", encoding='utf-8')
             
-            # 构建rsync命令
-            rsync_cmd = ['rsync', '-avz', '--progress']
+            # 构建rsync命令 - 同步整个项目
+            rsync_cmd = ['rsync', '-avz', '--progress', '--delete']
+            
+            # 排除不需要的文件
+            rsync_cmd.extend([
+                '--exclude=.git',
+                '--exclude=node_modules',
+                '--exclude=.next',
+                '--exclude=out',
+                '--exclude=*.log',
+                '--exclude=.DS_Store'
+            ])
             
             if config.get('SSH_KEY'):
                 rsync_cmd.extend(['-e', f"ssh -i {config['SSH_KEY']}"])
             
-            # 源路径：本地public目录
-            source = str(self.project_root / "public") + "/"
+            # 源路径：整个项目目录
+            source = str(self.project_root) + "/"
             # 目标路径：ECS上的部署目录
-            target = f"{config['ECS_USER']}@{config['ECS_HOST']}:{config['DEPLOY_PATH']}/public/"
+            target = f"{config['ECS_USER']}@{config['ECS_HOST']}:{config['DEPLOY_PATH']}/"
             
             rsync_cmd.extend([source, target])
             
-            self.log_info("同步public目录（包含图片和数据文件）...")
+            self.log_info("同步项目源码到ECS...")
             self.log_info(f"命令: {' '.join(rsync_cmd)}")
             
             result = subprocess.run(rsync_cmd)
             if result.returncode == 0:
-                self.log_success("数据同步完成")
+                self.log_success("源码同步完成")
                 return True
             else:
-                self.log_error("数据同步失败")
+                self.log_error("源码同步失败")
                 return False
                 
         except Exception as e:
             self.log_error(f"同步过程出错: {e}")
             return False
     
-    def restart_ecs_service(self, config: Dict[str, str]) -> bool:
-        """重启ECS上的服务"""
-        self.log_step("重启ECS服务...")
-        command = f"cd {config['DEPLOY_PATH']} && docker-compose restart"
-        if self.ssh_exec(command, config):
-            self.log_success("服务重启完成")
+    def build_on_ecs(self, config: Dict[str, str]) -> bool:
+        """在ECS上构建Docker镜像"""
+        self.log_step("在ECS上构建Docker镜像...")
+        
+        build_command = f"""
+            cd {config['DEPLOY_PATH']} && \\
+            echo "开始构建Docker镜像..." && \\
+            docker build -t img-hub:latest . && \\
+            echo "构建完成"
+        """
+        
+        if self.ssh_exec(build_command, config):
+            self.log_success("Docker镜像构建完成")
             return True
         else:
-            self.log_error("服务重启失败")
+            self.log_error("Docker镜像构建失败")
             return False
     
+    def restart_ecs_service(self, config: Dict[str, str]) -> bool:
+        """重启ECS上的服务"""
+        self.log_step("启动/重启ECS服务...")
+        
+        # 更新docker-compose.yml中的镜像名称，然后重启服务
+        restart_command = f"""
+            cd {config['DEPLOY_PATH']} && \\
+            sed -i 's|image:.*|image: img-hub:latest|' docker-compose.yml && \\
+            docker-compose down && \\
+            docker-compose up -d && \\
+            echo "服务启动完成"
+        """
+        
+        if self.ssh_exec(restart_command, config):
+            self.log_success("服务启动完成")
+            return True
+        else:
+            self.log_error("服务启动失败")
+            return False
+    
+    def check_ecs_docker(self, config: Dict[str, str]) -> bool:
+        """检查ECS上的Docker环境"""
+        self.log_step("检查ECS Docker环境...")
+        
+        docker_check_command = """
+            if command -v docker >/dev/null 2>&1 && command -v docker-compose >/dev/null 2>&1; then
+                echo "Docker环境检查通过"
+                docker --version
+                docker-compose --version
+            else
+                echo "Docker环境不完整"
+                exit 1
+            fi
+        """
+        
+        if self.ssh_exec(docker_check_command, config):
+            self.log_success("ECS Docker环境正常")
+            return True
+        else:
+            self.log_error("ECS上Docker环境不完整")
+            self.log_info("请在ECS上安装Docker和Docker Compose")
+            return False
+    
+    def prepare_ecs_structure(self, config: Dict[str, str]) -> bool:
+        """准备ECS目录结构"""
+        self.log_step("准备ECS目录结构...")
+        
+        prepare_command = f"""
+            mkdir -p {config['DEPLOY_PATH']} && \\
+            echo "ECS目录结构准备完成"
+        """
+        
+        if self.ssh_exec(prepare_command, config):
+            self.log_success("ECS目录结构准备完成")
+            return True
+        else:
+            self.log_error("ECS目录结构准备失败")
+            return False
+
     def deploy_to_ecs(self):
-        """部署到ECS的完整流程"""
+        """部署到ECS的完整流程（远程构建方案）"""
         try:
             # 加载或配置ECS信息
             config = self.load_deploy_config()
@@ -821,20 +897,33 @@ class ImgManager:
             self.log_info(f"  主机: {config.get('ECS_HOST')}")
             self.log_info(f"  用户: {config.get('ECS_USER')}")
             self.log_info(f"  路径: {config.get('DEPLOY_PATH')}")
+            self.log_info("  方案: ECS远程构建")
             
             # 检查连接
             if not self.check_ecs_connection(config):
                 return False
             
-            # 同步数据
+            # 检查ECS Docker环境
+            if not self.check_ecs_docker(config):
+                return False
+            
+            # 准备ECS目录结构
+            if not self.prepare_ecs_structure(config):
+                return False
+            
+            # 同步源码到ECS
             if not self.sync_to_ecs(config):
                 return False
             
-            # 重启服务
+            # 在ECS上构建镜像
+            if not self.build_on_ecs(config):
+                return False
+            
+            # 启动服务
             if not self.restart_ecs_service(config):
                 return False
             
-            self.log_success("🎉 ECS部署完成！")
+            self.log_success("🎉 ECS远程构建部署完成！")
             self.log_info(f"访问地址: http://{config['ECS_HOST']}")
             return True
             
@@ -900,8 +989,8 @@ class ImgManager:
     def show_help(self):
         """显示帮助信息"""
         print(f"""
-{Colors.CYAN}ImgHub 图片管理工具 v4.0.0{Colors.NC}
-{Colors.YELLOW}Python版本 - 图片处理 + ECS部署一体化{Colors.NC}
+{Colors.CYAN}ImgHub 图片管理工具 v4.1.0{Colors.NC}
+{Colors.YELLOW}Python版本 - 图片处理 + ECS远程构建一体化{Colors.NC}
 
 {Colors.GREEN}用法:{Colors.NC}
   python scripts/img-manager.py [命令]
@@ -909,7 +998,7 @@ class ImgManager:
 {Colors.GREEN}可用命令:{Colors.NC}
   local-test      本地测试模式（处理图片并保存到本地）
   local-preview   启动本地预览服务
-  deploy          部署到ECS服务器
+  deploy          ECS远程构建部署
   ecs-config      配置ECS连接信息
   status          查看当前数据状态
   help            显示此帮助信息
@@ -919,12 +1008,18 @@ class ImgManager:
   • 📊 EXIF 数据自动提取
   • 🎨 JSON 数据自动管理
   • 🔄 交互式操作界面
-  • 🚀 一键部署到ECS
+  • 🚀 ECS远程构建部署
   • ⭐ 原图无损保存（100%质量）
 
 {Colors.GREEN}典型工作流程:{Colors.NC}
   1. python scripts/img-manager.py local-test     # 处理图片
-  2. python scripts/img-manager.py deploy        # 部署到ECS
+  2. python scripts/img-manager.py deploy        # ECS远程构建
+
+{Colors.GREEN}ECS远程构建特点:{Colors.NC}
+  • 无需本地Docker环境
+  • 同步源码到ECS进行构建
+  • 自动构建精简Docker镜像
+  • 一键部署更新服务
 
 {Colors.GREEN}ECS部署配置:{Colors.NC}
   • 首次使用会提示输入ECS连接信息
@@ -932,14 +1027,13 @@ class ImgManager:
   • 支持SSH密钥和密码登录方式
 
 {Colors.GREEN}依赖要求:{Colors.NC}
-  • Python 3.6+
-  • ImageMagick (convert, identify)
-  • ExifTool (exiftool)
-  • rsync, ssh (部署功能)
+  • 本地: Python 3.6+, ImageMagick, ExifTool, rsync, ssh
+  • ECS: Docker, Docker Compose
 
 {Colors.GREEN}安装依赖:{Colors.NC}
-  macOS: brew install imagemagick exiftool rsync openssh
-  Ubuntu: sudo apt install imagemagick libimage-exiftool-perl rsync openssh-client
+  本地 macOS: brew install imagemagick exiftool rsync openssh
+  本地 Ubuntu: sudo apt install imagemagick libimage-exiftool-perl rsync openssh-client
+  ECS: 参考项目文档安装Docker环境
 """)
 
 if __name__ == "__main__":

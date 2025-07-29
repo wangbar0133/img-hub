@@ -182,14 +182,14 @@ export const sampleAlbums: Album[] = albumsData
 - 原图无损保存（100%质量）
 - 自动更新 `public/albums.json`
 - 交互式操作界面
-- **🆕 一键ECS部署功能**
+- **🆕 ECS远程构建部署**
 
 **使用方法**:
 ```bash
 # 本地图片处理和测试（支持ECS上传）
 python3 scripts/img-manager.py local-test
 
-# 一键部署到ECS
+# ECS远程构建部署
 python3 scripts/img-manager.py deploy
 
 # 配置ECS连接信息  
@@ -202,11 +202,17 @@ python3 scripts/img-manager.py status
 python3 scripts/img-manager.py local-preview
 ```
 
-**工作流程**:
-1. `local-test` - 处理图片后询问是否上传ECS
-2. `deploy` - 独立执行ECS部署
+**ECS远程构建特点**:
+- ✅ **无需本地Docker**：本地只需Python环境
+- ✅ **源码同步**：rsync传输项目到ECS
+- ✅ **远程构建**：ECS执行docker build
+- ✅ **一键部署**：自动更新并重启服务
 
-**注意**: ~~旧的 `img-manager.sh` 已废弃~~，Python版本现已集成ECS部署功能。
+**工作流程**:
+1. `local-test` - 处理图片后询问是否部署ECS
+2. `deploy` - 同步源码到ECS并远程构建
+
+**注意**: ~~旧的 `img-manager.sh` 已废弃~~，Python版本现已集成ECS远程构建功能。
 
 ### 图片优化设置
 
