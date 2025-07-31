@@ -15,6 +15,7 @@ export default function AlbumDetailClient({ album }: AlbumDetailClientProps) {
   const params = useParams()
   const albumId = params.albumId as string
   const [loadedImages, setLoadedImages] = useState<Set<number>>(new Set())
+  const [failedImages, setFailedImages] = useState<Set<number>>(new Set())
 
   // 获取缩略图源（优先使用缩略图，否则使用普通图片）
   const getThumbnailSrc = (photo: any) => {
@@ -23,6 +24,19 @@ export default function AlbumDetailClient({ album }: AlbumDetailClientProps) {
 
   const handleImageLoad = (photoId: number) => {
     setLoadedImages(prev => {
+      const newSet = new Set(prev)
+      newSet.add(photoId)
+      return newSet
+    })
+    setFailedImages(prev => {
+      const newSet = new Set(prev)
+      newSet.delete(photoId)
+      return newSet
+    })
+  }
+
+  const handleImageError = (photoId: number) => {
+    setFailedImages(prev => {
       const newSet = new Set(prev)
       newSet.add(photoId)
       return newSet
@@ -40,41 +54,49 @@ export default function AlbumDetailClient({ album }: AlbumDetailClientProps) {
               className="flex items-center space-x-3 text-gray-700 hover:text-gray-900 transition-colors group font-medium"
             >
               <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-              <span className="font-semibold">返回影集列表</span>
+              <span>返回影集</span>
             </Link>
             
-            <nav className="text-sm text-gray-600">
-              <Link href="/" className="hover:text-gray-800 font-medium">首页</Link>
-              <span className="mx-2 text-gray-400">/</span>
-              <Link href="/albums" className="hover:text-gray-800 font-medium">影集</Link>
-              <span className="mx-2 text-gray-400">/</span>
-              <span className="text-gray-900 font-semibold">{album.title}</span>
-            </nav>
+            <div className="flex items-center space-x-2 text-sm text-gray-500">
+              <Link href="/" className="hover:text-gray-700 transition-colors">首页</Link>
+              <span>/</span>
+              <Link href="/albums" className="hover:text-gray-700 transition-colors">影集</Link>
+              <span>/</span>
+              <span className="text-gray-900 font-medium">{album.title}</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Album Info */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Album Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-16"
+          className="text-center mb-12"
         >
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-4 lg:mb-6">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
             {album.title}
           </h1>
+          <p className="text-lg text-gray-600 mb-6 max-w-3xl mx-auto">
+            {album.description}
+          </p>
           
-          <div className="flex flex-wrap items-center justify-center gap-4 lg:gap-8 text-gray-500 text-sm lg:text-base">
+          <div className="flex flex-wrap justify-center items-center gap-6 text-sm text-gray-500">
             <div className="flex items-center space-x-2">
-              <Calendar className="w-5 h-5" />
-              <span>{album.createdAt}</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <ImageIcon className="w-5 h-5" />
+              <ImageIcon className="w-4 h-4" />
               <span>{album.photos.length} 张照片</span>
             </div>
+            <div className="flex items-center space-x-2">
+              <Calendar className="w-4 h-4" />
+              <span>{new Date(album.createdAt).toLocaleDateString('zh-CN')}</span>
+            </div>
+            {album.location && (
+              <div className="flex items-center space-x-2">
+                <span>📍 {album.location}</span>
+              </div>
+            )}
           </div>
         </motion.div>
 
@@ -90,11 +112,23 @@ export default function AlbumDetailClient({ album }: AlbumDetailClientProps) {
             >
               <Link href={`/albums/${albumId}/photos/${photo.id}`}>
                 <div className="relative aspect-square rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 group-hover:-translate-y-1">
-                  {!loadedImages.has(photo.id) && (
+                  {/* 加载状态指示器 */}
+                  {!loadedImages.has(photo.id) && !failedImages.has(photo.id) && (
                     <div className="absolute inset-0 bg-gray-200 image-loading flex items-center justify-center">
                       <ImageIcon className="w-6 h-6 text-gray-400" />
                     </div>
                   )}
+                  
+                  {/* 加载失败显示 */}
+                  {failedImages.has(photo.id) && (
+                    <div className="absolute inset-0 bg-gray-200 flex items-center justify-center">
+                      <div className="text-center">
+                        <ImageIcon className="w-6 h-6 text-gray-400 mx-auto mb-1" />
+                        <p className="text-xs text-gray-500">加载失败</p>
+                      </div>
+                    </div>
+                  )}
+                  
                   <img
                     src={getThumbnailSrc(photo)}
                     alt={photo.alt}
@@ -102,7 +136,12 @@ export default function AlbumDetailClient({ album }: AlbumDetailClientProps) {
                       loadedImages.has(photo.id) ? 'opacity-100' : 'opacity-0'
                     }`}
                     onLoad={() => handleImageLoad(photo.id)}
+                    onError={() => handleImageError(photo.id)}
                     loading="lazy"
+                    style={{
+                      minHeight: '100%',
+                      minWidth: '100%'
+                    }}
                   />
                   
                   {/* Quality Indicator */}
@@ -114,8 +153,8 @@ export default function AlbumDetailClient({ album }: AlbumDetailClientProps) {
                   
                   {/* Overlay */}
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
-                    <div className="text-white">
-                      <h3 className="font-semibold text-sm truncate">{photo.title}</h3>
+                    <div className="text-white text-sm">
+                      <p className="font-medium truncate">{photo.title}</p>
                     </div>
                   </div>
                 </div>
@@ -123,19 +162,6 @@ export default function AlbumDetailClient({ album }: AlbumDetailClientProps) {
             </motion.div>
           ))}
         </div>
-
-        {/* Empty State */}
-        {album.photos.length === 0 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center py-20"
-          >
-            <ImageIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-xl font-medium text-gray-600 mb-2">暂无照片</h3>
-            <p className="text-gray-500">这个影集还没有添加任何照片</p>
-          </motion.div>
-        )}
       </div>
     </div>
   )

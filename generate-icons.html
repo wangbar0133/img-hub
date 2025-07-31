@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>图标生成器</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        canvas { border: 1px solid #ccc; margin: 10px; }
+        .icon-grid { display: flex; flex-wrap: wrap; gap: 20px; }
+        .icon-item { text-align: center; }
+        button { padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>ImgHub 图标生成器</h1>
+    <p>点击下载按钮来获取不同尺寸的图标：</p>
+    
+    <div class="icon-grid">
+        <div class="icon-item">
+            <canvas id="icon16" width="16" height="16"></canvas>
+            <br><button onclick="downloadIcon('icon16', 'favicon-16x16.png')">下载 16x16</button>
+        </div>
+        <div class="icon-item">
+            <canvas id="icon32" width="32" height="32"></canvas>
+            <br><button onclick="downloadIcon('icon32', 'favicon-32x32.png')">下载 32x32</button>
+        </div>
+        <div class="icon-item">
+            <canvas id="icon180" width="180" height="180"></canvas>
+            <br><button onclick="downloadIcon('icon180', 'apple-touch-icon.png')">下载 180x180 (Apple)</button>
+        </div>
+        <div class="icon-item">
+            <canvas id="icon192" width="192" height="192"></canvas>
+            <br><button onclick="downloadIcon('icon192', 'android-chrome-192x192.png')">下载 192x192</button>
+        </div>
+        <div class="icon-item">
+            <canvas id="icon512" width="512" height="512"></canvas>
+            <br><button onclick="downloadIcon('icon512', 'android-chrome-512x512.png')">下载 512x512</button>
+        </div>
+    </div>
+
+    <script>
+        function drawIcon(canvasId, size) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            
+            // 创建渐变背景
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#667eea');
+            gradient.addColorStop(1, '#764ba2');
+            
+            // 绘制背景
+            ctx.fillStyle = gradient;
+            ctx.roundRect(0, 0, size, size, size * 0.1875);
+            ctx.fill();
+            
+            // 绘制相机图标
+            const scale = size / 32;
+            ctx.fillStyle = 'white';
+            
+            // 相机机身
+            ctx.roundRect(8 * scale, 12 * scale, 16 * scale, 8 * scale, 2 * scale);
+            ctx.fill();
+            
+            // 镜头
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(16 * scale, 16 * scale, 3 * scale, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // 闪光灯
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(20 * scale, 13 * scale, 1 * scale, 0, 2 * Math.PI);
+            ctx.fill();
+        }
+        
+        function downloadIcon(canvasId, filename) {
+            const canvas = document.getElementById(canvasId);
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+        
+        // 修复 roundRect 兼容性
+        if (!CanvasRenderingContext2D.prototype.roundRect) {
+            CanvasRenderingContext2D.prototype.roundRect = function(x, y, width, height, radius) {
+                this.beginPath();
+                this.moveTo(x + radius, y);
+                this.lineTo(x + width - radius, y);
+                this.quadraticCurveTo(x + width, y, x + width, y + radius);
+                this.lineTo(x + width, y + height - radius);
+                this.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+                this.lineTo(x + radius, y + height);
+                this.quadraticCurveTo(x, y + height, x, y + height - radius);
+                this.lineTo(x, y + radius);
+                this.quadraticCurveTo(x, y, x + radius, y);
+                this.closePath();
+            };
+        }
+        
+        // 生成所有图标
+        drawIcon('icon16', 16);
+        drawIcon('icon32', 32);
+        drawIcon('icon180', 180);
+        drawIcon('icon192', 192);
+        drawIcon('icon512', 512);
+    </script>
+</body>
+</html>

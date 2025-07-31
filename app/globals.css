@@ -6,11 +6,39 @@
 
 html {
   scroll-behavior: smooth;
+  /* 移动端触摸优化 */
+  touch-action: manipulation;
 }
 
 body {
   font-family: 'Inter', sans-serif;
   background-color: #fafafa;
+  /* 防止移动端缩放导致的布局问题 */
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* 移动端触摸优化 */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 全屏模态框专用样式 */
+.fullscreen-modal {
+  touch-action: none !important;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* 可触摸元素优化 */
+.touchable {
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
 }
 
 /* 自定义滚动条 */
