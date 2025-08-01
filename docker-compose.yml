@@ -2,9 +2,7 @@ version: '3.8'
 
 services:
   img-hub:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: wangbar01334/img-hub:latest
     container_name: img-hub-app
     restart: unless-stopped
     ports:
