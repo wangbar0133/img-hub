@@ -24,12 +24,9 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # 从构建阶段复制静态文件
 COPY --from=builder /app/out /usr/share/nginx/html
 
-# 清理需要挂载的动态内容，保留静态icon文件在容器内
 # 只清理images目录和albums.json，其他静态资源保持不变
-RUN rm -rf /usr/share/nginx/html/public/images && \
-    rm -f /usr/share/nginx/html/public/albums.json && \
-    mkdir -p /usr/share/nginx/html/public/images/{travel,cosplay,detail,original} && \
-    mkdir -p /usr/share/nginx/html/public/images/thumbnails/{travel,cosplay}
+RUN rm -rf /usr/share/nginx/html/public/images
+
 
 # 创建日志目录
 RUN mkdir -p /var/log/nginx

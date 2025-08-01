@@ -8,9 +8,9 @@ services:
     ports:
       - "80:80"
     volumes:
-      # 只挂载动态内容，保留容器内的静态icon文件
+      # 挂载 images
       - ./public/images:/usr/share/nginx/html/public/images:ro
-      - ./public/albums.json:/usr/share/nginx/html/public/albums.json:ro
+    
     environment:
       - NODE_ENV=production
     networks:
@@ -29,7 +29,3 @@ services:
 networks:
   img-hub-network:
     driver: bridge
-
-volumes:
-  img-storage:
-    driver: local
