@@ -1,7 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { ArrowLeft, Calendar, ImageIcon } from 'lucide-react'
@@ -11,37 +10,80 @@ interface AlbumDetailClientProps {
   album: Album
 }
 
-export default function AlbumDetailClient({ album }: AlbumDetailClientProps) {
-  const params = useParams()
-  const albumId = params.albumId as string
-  const [loadedImages, setLoadedImages] = useState<Set<number>>(new Set())
-  const [failedImages, setFailedImages] = useState<Set<number>>(new Set())
+export default function AlbumDetailClient({ album: initialAlbum }: AlbumDetailClientProps) {
+  const [album, setAlbum] = useState<Album>(initialAlbum)
+  const [loading, setLoading] = useState(false)
+  const albumId = album.id
+  const [loadedImages, setLoadedImages] = useState<Record<number, boolean>>({})
+  const [failedImages, setFailedImages] = useState<Record<number, boolean>>({})
+
+  // 动态加载 albums 数据
+  useEffect(() => {
+    const loadAlbum = async () => {
+      setLoading(true)
+      try {
+        const response = await fetch('/api/albums')
+        if (response.ok) {
+          const albums = await response.json()
+          const foundAlbum = albums.find((a: Album) => a.id === albumId)
+          if (foundAlbum) {
+            setAlbum(foundAlbum)
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load album:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadAlbum()
+  }, [albumId])
+
+  // 重置图片加载状态当album改变时
+  useEffect(() => {
+    setLoadedImages({})
+    setFailedImages({})
+  }, [album.id])
+
+  // 预加载前几张图片
+  useEffect(() => {
+    const preloadImages = album.photos.slice(0, 6).map(photo => {
+      const img = new Image()
+      img.src = getThumbnailSrc(photo)
+      return img
+    })
+
+    return () => {
+      preloadImages.forEach(img => {
+        img.src = ''
+      })
+    }
+  }, [album])
 
   // 获取缩略图源（优先使用缩略图，否则使用普通图片）
   const getThumbnailSrc = (photo: any) => {
     return photo.thumbnail || photo.src
   }
 
-  const handleImageLoad = (photoId: number) => {
-    setLoadedImages(prev => {
-      const newSet = new Set(prev)
-      newSet.add(photoId)
-      return newSet
-    })
+  const handleImageLoad = useCallback((photoId: number) => {
+    setLoadedImages(prev => ({
+      ...prev,
+      [photoId]: true
+    }))
     setFailedImages(prev => {
-      const newSet = new Set(prev)
-      newSet.delete(photoId)
-      return newSet
+      const newState = { ...prev }
+      delete newState[photoId]
+      return newState
     })
-  }
+  }, [])
 
-  const handleImageError = (photoId: number) => {
-    setFailedImages(prev => {
-      const newSet = new Set(prev)
-      newSet.add(photoId)
-      return newSet
-    })
-  }
+  const handleImageError = useCallback((photoId: number) => {
+    setFailedImages(prev => ({
+      ...prev,
+      [photoId]: true
+    }))
+  }, [])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50">
@@ -100,9 +142,23 @@ export default function AlbumDetailClient({ album }: AlbumDetailClientProps) {
           </div>
         </motion.div>
 
+        {/* Loading State */}
+        {loading && (
+          <div className="flex justify-center items-center py-20">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-photo-dark"></div>
+            <span className="ml-3 text-photo-dark">加载影集中...</span>
+          </div>
+        )}
+
         {/* Photo Grid */}
+        {!loading && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-6">
-          {album.photos.map((photo, index) => (
+          {album.photos.map((photo, index) => {
+            const isLoaded = loadedImages[photo.id]
+            const hasFailed = failedImages[photo.id]
+            const isLoading = !isLoaded && !hasFailed
+            
+            return (
             <motion.div
               key={photo.id}
               initial={{ opacity: 0, y: 20 }}
@@ -113,14 +169,14 @@ export default function AlbumDetailClient({ album }: AlbumDetailClientProps) {
               <Link href={`/albums/${albumId}/photos/${photo.id}`}>
                 <div className="relative aspect-square rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 group-hover:-translate-y-1">
                   {/* 加载状态指示器 */}
-                  {!loadedImages.has(photo.id) && !failedImages.has(photo.id) && (
+                  {!loadedImages[photo.id] && !failedImages[photo.id] && (
                     <div className="absolute inset-0 bg-gray-200 image-loading flex items-center justify-center">
                       <ImageIcon className="w-6 h-6 text-gray-400" />
                     </div>
                   )}
                   
                   {/* 加载失败显示 */}
-                  {failedImages.has(photo.id) && (
+                  {failedImages[photo.id] && (
                     <div className="absolute inset-0 bg-gray-200 flex items-center justify-center">
                       <div className="text-center">
                         <ImageIcon className="w-6 h-6 text-gray-400 mx-auto mb-1" />
@@ -132,12 +188,18 @@ export default function AlbumDetailClient({ album }: AlbumDetailClientProps) {
                   <img
                     src={getThumbnailSrc(photo)}
                     alt={photo.alt}
-                    className={`w-full h-full object-cover transition-all duration-300 group-hover:scale-105 ${
-                      loadedImages.has(photo.id) ? 'opacity-100' : 'opacity-0'
+                    ref={(img) => {
+                      if (img && img.complete && img.naturalWidth > 0 && !loadedImages[photo.id]) {
+                        handleImageLoad(photo.id)
+                      }
+                    }}
+                    className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${
+                      loadedImages[photo.id] ? 'opacity-100' : 'opacity-0'
                     }`}
                     onLoad={() => handleImageLoad(photo.id)}
                     onError={() => handleImageError(photo.id)}
-                    loading="lazy"
+                    loading="eager"
+                    fetchPriority={index < 6 ? "high" : "low"}
                     style={{
                       minHeight: '100%',
                       minWidth: '100%'
@@ -160,8 +222,9 @@ export default function AlbumDetailClient({ album }: AlbumDetailClientProps) {
                 </div>
               </Link>
             </motion.div>
-          ))}
+          )})}
         </div>
+        )}
       </div>
     </div>
   )

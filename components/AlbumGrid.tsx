@@ -13,8 +13,8 @@ interface AlbumGridProps {
 
 export default function AlbumGrid({ albums, selectedCategory = 'all' }: AlbumGridProps) {
   const [filteredAlbums, setFilteredAlbums] = useState<Album[]>(albums)
-  const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set())
-  const [failedImages, setFailedImages] = useState<Set<string>>(new Set())
+  const [loadedImages, setLoadedImages] = useState<Record<string, boolean>>({})
+  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({})
 
   const categories = [
     { id: 'all', name: '全部影集', count: albums.length },
@@ -33,28 +33,23 @@ export default function AlbumGrid({ albums, selectedCategory = 'all' }: AlbumGri
 
   // 图片加载处理
   const handleImageLoad = useCallback((albumId: string) => {
-    setLoadedImages(prev => {
-      if (prev.has(albumId)) return prev
-      const newSet = new Set(prev)
-      newSet.add(albumId)
-      return newSet
-    })
+    setLoadedImages(prev => ({
+      ...prev,
+      [albumId]: true
+    }))
     
     setFailedImages(prev => {
-      if (!prev.has(albumId)) return prev
-      const newSet = new Set(prev)
-      newSet.delete(albumId)
-      return newSet
+      const newState = { ...prev }
+      delete newState[albumId]
+      return newState
     })
   }, [])
 
   const handleImageError = useCallback((albumId: string) => {
-    setFailedImages(prev => {
-      if (prev.has(albumId)) return prev
-      const newSet = new Set(prev)
-      newSet.add(albumId)
-      return newSet
-    })
+    setFailedImages(prev => ({
+      ...prev,
+      [albumId]: true
+    }))
   }, [])
 
   const formatDate = (dateString: string) => {
@@ -69,9 +64,9 @@ export default function AlbumGrid({ albums, selectedCategory = 'all' }: AlbumGri
     event.stopPropagation()
     
     setFailedImages(prev => {
-      const newSet = new Set(prev)
-      newSet.delete(albumId)
-      return newSet
+      const newState = { ...prev }
+      delete newState[albumId]
+      return newState
     })
     
     const imgElement = document.querySelector(`img[data-album-id="${albumId}"]`) as HTMLImageElement
@@ -108,8 +103,8 @@ export default function AlbumGrid({ albums, selectedCategory = 'all' }: AlbumGri
         {/* Albums Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
           {filteredAlbums.map((album, index) => {
-            const isLoaded = loadedImages.has(album.id)
-            const hasFailed = failedImages.has(album.id)
+            const isLoaded = loadedImages[album.id]
+            const hasFailed = failedImages[album.id]
             const isLoading = !isLoaded && !hasFailed
             
             return (
@@ -156,6 +151,11 @@ export default function AlbumGrid({ albums, selectedCategory = 'all' }: AlbumGri
                         data-album-id={album.id}
                         src={album.coverImage}
                         alt={album.title}
+                        ref={(img) => {
+                          if (img && img.complete && img.naturalWidth > 0 && !loadedImages[album.id]) {
+                            handleImageLoad(album.id)
+                          }
+                        }}
                         className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-110 ${
                           isLoaded ? 'opacity-100' : 'opacity-0'
                         }`}

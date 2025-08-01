@@ -5,16 +5,11 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# 复制包管理文件
-COPY package*.json ./
-
-# 安装依赖
-RUN npm ci --only=production
-
 # 复制源代码
 COPY . .
 
 # 构建应用
+RUN npm install
 RUN npm run build
 
 # 第二阶段：生产环境
@@ -34,9 +29,7 @@ COPY --from=builder /app/out /usr/share/nginx/html
 RUN rm -rf /usr/share/nginx/html/public/images && \
     rm -f /usr/share/nginx/html/public/albums.json && \
     mkdir -p /usr/share/nginx/html/public/images/{travel,cosplay,detail,original} && \
-    mkdir -p /usr/share/nginx/html/public/images/thumbnails/{travel,cosplay} && \
-    touch /usr/share/nginx/html/public/albums.json && \
-    echo "[]" > /usr/share/nginx/html/public/albums.json
+    mkdir -p /usr/share/nginx/html/public/images/thumbnails/{travel,cosplay}
 
 # 创建日志目录
 RUN mkdir -p /var/log/nginx

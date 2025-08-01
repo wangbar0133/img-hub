@@ -1,11 +1,11 @@
 import { notFound } from 'next/navigation'
 import { Album } from '@/types'
-import { getAlbumById, getAllAlbums } from '@/data/albums'
+import { getAlbumById, loadAlbumsFromFile } from '@/data/albums'
 import AlbumDetailClient from './AlbumDetailClient'
 
 // 静态导出时需要的函数
 export async function generateStaticParams() {
-  const albums = getAllAlbums()
+  const albums = loadAlbumsFromFile()
   
   return albums.map((album) => ({
     albumId: album.id,
@@ -14,7 +14,8 @@ export async function generateStaticParams() {
 
 // 生成页面元数据
 export async function generateMetadata({ params }: { params: { albumId: string } }) {
-  const album = getAlbumById(params.albumId)
+  const albums = loadAlbumsFromFile()
+  const album = getAlbumById(albums, params.albumId)
   
   if (!album) {
     return {
@@ -34,7 +35,8 @@ export async function generateMetadata({ params }: { params: { albumId: string }
 }
 
 export default function AlbumDetailPage({ params }: { params: { albumId: string } }) {
-  const album = getAlbumById(params.albumId)
+  const albums = loadAlbumsFromFile()
+  const album = getAlbumById(albums, params.albumId)
 
   if (!album) {
     notFound()

@@ -51,8 +51,7 @@ coverage/
 # nyc test coverage
 .nyc_output
 
-# Docker
-.dockerignore
+public/images/
 
 # Temporary files
 *.tmp
@@ -95,3 +94,4 @@ temp/
 .svelte-kit
 
 # End of https://www.toptal.com/developers/gitignore/api/node,nextjs 
+public/albums.json

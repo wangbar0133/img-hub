@@ -1,11 +1,11 @@
 import { notFound } from 'next/navigation'
 import { Album, Photo } from '@/types'
-import { getAlbumById, getAllAlbums } from '@/data/albums'
+import { getAlbumById, loadAlbumsFromFile } from '@/data/albums'
 import PhotoDetailClient from './PhotoDetailClient'
 
 // 静态导出时需要的函数
 export async function generateStaticParams() {
-  const albums = getAllAlbums()
+  const albums = loadAlbumsFromFile()
   const params: { albumId: string; photoId: string }[] = []
   
   albums.forEach((album) => {
@@ -26,7 +26,8 @@ export async function generateMetadata({
 }: { 
   params: { albumId: string; photoId: string } 
 }) {
-  const album = getAlbumById(params.albumId)
+  const albums = loadAlbumsFromFile()
+  const album = getAlbumById(albums, params.albumId)
   const photo = album?.photos.find(p => p.id === parseInt(params.photoId))
   
   if (!album || !photo) {
@@ -46,8 +47,9 @@ export async function generateMetadata({
   }
 }
 
-export default async function PhotoDetailPage({ params }: { params: { albumId: string; photoId: string } }) {
-  const album = getAlbumById(params.albumId)
+export default function PhotoDetailPage({ params }: { params: { albumId: string; photoId: string } }) {
+  const albums = loadAlbumsFromFile()
+  const album = getAlbumById(albums, params.albumId)
   const photo = album?.photos.find(p => p.id.toString() === params.photoId)
 
   if (!album || !photo) {
