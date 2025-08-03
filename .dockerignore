@@ -40,10 +40,10 @@ Thumbs.db
 logs
 *.log
 
-# 排除public目录中的所有资源文件
-# 这些文件通过Docker挂载提供，不需要打包到镜像中
-public/images/
-public/albums.json
+# 保留public目录中的所有资源文件
+# 这些文件将被打包到镜像中
+# public/images/  # 现在需要打包图片
+# public/albums.json  # 现在需要打包数据文件
 
 # 但保留public目录下的其他静态资源（如果有的话）
 # public/*.ico

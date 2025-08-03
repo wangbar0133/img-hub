@@ -14,28 +14,27 @@ interface AlbumsClientProps {
 export default function AlbumsClient({ initialAlbums }: AlbumsClientProps) {
   const searchParams = useSearchParams()
   const selectedCategory = searchParams.get('category') || 'all'
-  const [albums, setAlbums] = useState<Album[]>(initialAlbums)
-  const [loading, setLoading] = useState(false)
+  const [albums] = useState<Album[]>(initialAlbums)
 
-  // 动态加载 albums 数据
-  useEffect(() => {
-    const loadAlbums = async () => {
-      setLoading(true)
-      try {
-        const response = await fetch('/api/albums')
-        if (response.ok) {
-          const data = await response.json()
-          setAlbums(data)
-        }
-      } catch (error) {
-        console.error('Failed to load albums:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
+  // 使用初始数据，不需要动态加载
+  // useEffect(() => {
+  //   const loadAlbums = async () => {
+  //     setLoading(true)
+  //     try {
+  //       const response = await fetch('/albums.json')
+  //       if (response.ok) {
+  //         const data = await response.json()
+  //         setAlbums(data)
+  //       }
+  //     } catch (error) {
+  //       console.error('Failed to load albums:', error)
+  //     } finally {
+  //       setLoading(false)
+  //     }
+  //   }
 
-    loadAlbums()
-  }, [])
+  //   loadAlbums()
+  // }, [])
 
   return (
     <div className="min-h-screen bg-photo-light">
@@ -74,12 +73,6 @@ export default function AlbumsClient({ initialAlbums }: AlbumsClientProps) {
 
       {/* Albums Grid */}
       <div className="py-12">
-        {loading && (
-          <div className="flex justify-center items-center py-20">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-photo-dark"></div>
-            <span className="ml-3 text-photo-dark">加载影集中...</span>
-          </div>
-        )}
         <AlbumGrid albums={albums} selectedCategory={selectedCategory} />
       </div>
     </div>

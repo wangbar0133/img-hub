@@ -11,34 +11,33 @@ interface AlbumDetailClientProps {
 }
 
 export default function AlbumDetailClient({ album: initialAlbum }: AlbumDetailClientProps) {
-  const [album, setAlbum] = useState<Album>(initialAlbum)
-  const [loading, setLoading] = useState(false)
+  const [album] = useState<Album>(initialAlbum)
   const albumId = album.id
   const [loadedImages, setLoadedImages] = useState<Record<number, boolean>>({})
   const [failedImages, setFailedImages] = useState<Record<number, boolean>>({})
 
-  // 动态加载 albums 数据
-  useEffect(() => {
-    const loadAlbum = async () => {
-      setLoading(true)
-      try {
-        const response = await fetch('/api/albums')
-        if (response.ok) {
-          const albums = await response.json()
-          const foundAlbum = albums.find((a: Album) => a.id === albumId)
-          if (foundAlbum) {
-            setAlbum(foundAlbum)
-          }
-        }
-      } catch (error) {
-        console.error('Failed to load album:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
+  // 使用初始数据，不需要动态加载
+  // useEffect(() => {
+  //   const loadAlbum = async () => {
+  //     setLoading(true)
+  //     try {
+  //       const response = await fetch('/albums.json')
+  //       if (response.ok) {
+  //         const albums = await response.json()
+  //         const foundAlbum = albums.find((a: Album) => a.id === albumId)
+  //         if (foundAlbum) {
+  //           setAlbum(foundAlbum)
+  //         }
+  //       }
+  //     } catch (error) {
+  //       console.error('Failed to load album:', error)
+  //     } finally {
+  //       setLoading(false)
+  //     }
+  //   }
 
-    loadAlbum()
-  }, [albumId])
+  //   loadAlbum()
+  // }, [albumId])
 
   // 重置图片加载状态当album改变时
   useEffect(() => {
@@ -142,16 +141,7 @@ export default function AlbumDetailClient({ album: initialAlbum }: AlbumDetailCl
           </div>
         </motion.div>
 
-        {/* Loading State */}
-        {loading && (
-          <div className="flex justify-center items-center py-20">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-photo-dark"></div>
-            <span className="ml-3 text-photo-dark">加载影集中...</span>
-          </div>
-        )}
-
         {/* Photo Grid */}
-        {!loading && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-6">
           {album.photos.map((photo, index) => {
             const isLoaded = loadedImages[photo.id]
@@ -224,7 +214,6 @@ export default function AlbumDetailClient({ album: initialAlbum }: AlbumDetailCl
             </motion.div>
           )})}
         </div>
-        )}
       </div>
     </div>
   )

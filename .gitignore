@@ -94,4 +94,4 @@ temp/
 .svelte-kit
 
 # End of https://www.toptal.com/developers/gitignore/api/node,nextjs 
-public/albums.json
+public

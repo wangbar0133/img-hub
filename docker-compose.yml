@@ -7,9 +7,8 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
-    volumes:
-      # 挂载 images
-      - ./public/images:/usr/share/nginx/html/public/images:ro
+    # volumes:
+      # 所有文件都已打包到镜像中，不需要挂载
     
     environment:
       - NODE_ENV=production
