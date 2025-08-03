@@ -1,21 +1,19 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import {
   ArrowLeft,
-  ChevronLeft,
-  ChevronRight,
   Download,
   Share2,
   Camera,
   Settings,
   Calendar,
   Maximize2,
-  ExternalLink,
   Tag,
+  ChevronUp,
 } from 'lucide-react'
 import { Album, Photo } from '@/types'
 import FullScreenModal from '@/components/FullScreenModal'
@@ -33,6 +31,13 @@ export default function PhotoDetailClient({ album, photo }: PhotoDetailClientPro
   const [currentIndex, setCurrentIndex] = useState<number>(0)
   const [isImageLoaded, setIsImageLoaded] = useState(false)
   const [isFullScreenOpen, setIsFullScreenOpen] = useState(false)
+  const [infoVisible, setInfoVisible] = useState(false)
+  const [touchStart, setTouchStart] = useState({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragOffset, setDragOffset] = useState(0)
+  
+  const containerRef = useRef<HTMLDivElement>(null)
+  const infoRef = useRef<HTMLDivElement>(null)
 
   // 获取详情页图片源（优先使用detailSrc 900p不裁切）
   const getDetailImageSrc = (photo: Photo) => {
@@ -64,6 +69,65 @@ export default function PhotoDetailClient({ album, photo }: PhotoDetailClientPro
     }
   }
 
+  // 触摸事件处理
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart({
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY
+    })
+    setIsDragging(false)
+    setDragOffset(0)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStart.x || !touchStart.y) return
+    
+    const currentX = e.touches[0].clientX
+    const currentY = e.touches[0].clientY
+    const deltaX = touchStart.x - currentX
+    const deltaY = touchStart.y - currentY
+    
+    // 判断滑动方向：水平滑动用于切换图片，垂直滑动用于显示/隐藏信息
+    const isHorizontalSwipe = Math.abs(deltaX) > Math.abs(deltaY)
+    
+    if (isHorizontalSwipe && Math.abs(deltaX) > 10) {
+      setIsDragging(true)
+      setDragOffset(-deltaX)
+    }
+  }
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStart.x || !touchStart.y) return
+    
+    const endX = e.changedTouches[0].clientX
+    const endY = e.changedTouches[0].clientY
+    const deltaX = touchStart.x - endX
+    const deltaY = touchStart.y - endY
+    
+    const isHorizontalSwipe = Math.abs(deltaX) > Math.abs(deltaY)
+    const swipeThreshold = 50
+    
+    if (isHorizontalSwipe && Math.abs(deltaX) > swipeThreshold) {
+      // 水平滑动切换图片
+      if (deltaX > 0 && currentIndex < album.photos.length - 1) {
+        handleNextPhoto()
+      } else if (deltaX < 0 && currentIndex > 0) {
+        handlePrevPhoto()
+      }
+    } else if (!isHorizontalSwipe && Math.abs(deltaY) > swipeThreshold) {
+      // 垂直滑动显示/隐藏信息
+      if (deltaY > 0) {
+        setInfoVisible(true) // 向上滑动显示信息
+      } else {
+        setInfoVisible(false) // 向下滑动隐藏信息
+      }
+    }
+    
+    setIsDragging(false)
+    setDragOffset(0)
+    setTouchStart({ x: 0, y: 0 })
+  }
+
   const handleKeyPress = (e: KeyboardEvent) => {
     // 只在全屏模态框关闭时响应导航键
     if (isFullScreenOpen) return
@@ -81,6 +145,19 @@ export default function PhotoDetailClient({ album, photo }: PhotoDetailClientPro
     document.addEventListener('keydown', handleKeyPress)
     return () => document.removeEventListener('keydown', handleKeyPress)
   }, [currentIndex, album, isFullScreenOpen])
+
+  // 检测屏幕尺寸，决定是否使用移动端布局
+  const [isMobile, setIsMobile] = useState(false)
+  
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 1024)
+    }
+    
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   const handleDownload = async () => {
     try {
@@ -144,15 +221,21 @@ export default function PhotoDetailClient({ album, photo }: PhotoDetailClientPro
 
       {/* Main Content Container */}
       <div className="pt-14 min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900">
-        <div className="flex flex-col lg:flex-row h-[calc(100vh-3.5rem)]">
-          
-          {/* Photo Display Area */}
-          <div className="flex-1 flex items-center justify-center relative bg-black/50 p-4 lg:p-8">
-            <div className="relative w-full h-full flex items-center justify-center">
-              
+        {isMobile ? (
+          /* 移动端布局 */
+          <div className="relative h-[calc(100vh-3.5rem)] overflow-hidden">
+            {/* 图片容器 - 全屏显示 */}
+            <div 
+              ref={containerRef}
+              className="h-full flex items-center justify-center relative bg-black"
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              style={{ touchAction: 'pan-y' }}
+            >
               {/* Loading State */}
               {!isImageLoaded && (
-                <div className="absolute inset-0 flex items-center justify-center">
+                <div className="absolute inset-0 flex items-center justify-center z-10">
                   <div className="flex flex-col items-center space-y-3">
                     <div className="w-12 h-12 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                     <span className="text-lg text-gray-300 font-medium">加载中...</span>
@@ -162,58 +245,206 @@ export default function PhotoDetailClient({ album, photo }: PhotoDetailClientPro
               )}
               
               {/* Main Image */}
-              <div className="relative group cursor-pointer">
+              <motion.div 
+                className="relative w-full h-full flex items-center justify-center px-4"
+                animate={{ x: dragOffset }}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              >
                 <img
                   src={displayImageSrc}
                   alt={photo.alt}
-                  className={`max-w-full max-h-[60vh] lg:max-h-[calc(100vh-8rem)] object-contain 
-                    transition-all duration-500 rounded-lg shadow-2xl
-                    ${isImageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}
-                    group-hover:shadow-blue-500/20`}
-                  style={{ touchAction: 'none' }}
+                  className={`max-w-full max-h-full object-contain
+                    transition-all duration-500
+                    ${isImageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}
                   onLoad={() => setIsImageLoaded(true)}
                   onClick={() => setIsFullScreenOpen(true)}
                 />
-                
-                {/* Hover Overlay */}
-                {isImageLoaded && (
-                  <div 
-                    className="absolute inset-0 cursor-pointer flex items-center justify-center 
-                      opacity-0 group-hover:opacity-100 transition-all duration-300 
-                      bg-gradient-to-t from-black/60 via-transparent to-black/30 rounded-lg"
-                    onClick={() => setIsFullScreenOpen(true)}
-                  >
-                    <div className="bg-blue-600/90 backdrop-blur-sm text-white px-6 py-3 rounded-full 
-                      flex items-center space-x-2 transform translate-y-4 group-hover:translate-y-0 transition-transform">
-                      <Maximize2 className="w-5 h-5" />
-                      <span className="text-sm font-medium">查看原图</span>
+              </motion.div>
+
+
+              {/* 左右滑动指示 */}
+              {isDragging && (
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2
+                  bg-black/70 backdrop-blur-sm text-white px-4 py-2 rounded-full pointer-events-none">
+                  <span className="text-sm">
+                    {dragOffset > 0 ? '← 上一张' : '下一张 →'}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* 可滑动的信息面板 */}
+            <motion.div
+              ref={infoRef}
+              initial={{ y: "100%" }}
+              animate={{ y: infoVisible ? "0%" : "90%" }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-gray-900 to-gray-800
+                border-t border-gray-700 rounded-t-3xl min-h-[50vh] max-h-[80vh] overflow-hidden"
+              style={{ touchAction: 'pan-y' }}
+            >
+              {/* 拖拽手柄 */}
+              <div 
+                className="flex justify-center py-3 cursor-pointer"
+                onClick={() => setInfoVisible(!infoVisible)}
+              >
+                <motion.div 
+                  className="w-12 h-1 bg-gray-500 rounded-full"
+                  animate={{ rotate: infoVisible ? 180 : 0 }}
+                />
+              </div>
+
+              {/* 信息内容 */}
+              <div className="px-6 pb-6 overflow-y-auto max-h-[calc(80vh-4rem)]">
+                {/* Photo Title */}
+                <div className="text-center mb-6">
+                  <h1 className="text-2xl font-bold text-white mb-2">{photo.title}</h1>
+                  <div className="flex items-center justify-center space-x-2 text-gray-400">
+                    <Calendar className="w-4 h-4" />
+                    <span className="text-sm">拍摄作品</span>
+                  </div>
+                </div>
+
+                {/* 其余信息内容保持不变，但适配移动端 */}
+                {photo.camera && (
+                  <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700/50 mb-6">
+                    <div className="flex items-center space-x-3 mb-2">
+                      <div className="p-2 bg-blue-600/20 rounded-lg">
+                        <Camera className="w-5 h-5 text-blue-400" />
+                      </div>
+                      <div>
+                        <p className="text-white font-semibold">{photo.camera}</p>
+                        <p className="text-gray-400 text-sm">相机设备</p>
+                      </div>
+                    </div>
+                    {photo.settings && (
+                      <div className="flex items-center space-x-2 mt-3 pt-3 border-t border-gray-700/50">
+                        <Settings className="w-4 h-4 text-gray-400" />
+                        <span className="text-gray-300 text-sm">{photo.settings}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Tags */}
+                {photo.tags && photo.tags.length > 0 && (
+                  <div className="mb-6">
+                    <div className="flex items-center space-x-2 mb-3">
+                      <Tag className="w-4 h-4 text-gray-400" />
+                      <span className="text-gray-400 text-sm font-medium">标签</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {photo.tags.map((tag) => (
+                        <span 
+                          key={tag}
+                          className="px-3 py-1 bg-blue-600/20 text-blue-300 text-sm rounded-full 
+                            border border-blue-600/30"
+                        >
+                          #{tag}
+                        </span>
+                      ))}
                     </div>
                   </div>
                 )}
+
+                {/* Action Buttons */}
+                <div className="space-y-3">
+                  <button
+                    onClick={() => setIsFullScreenOpen(true)}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 
+                      text-white px-6 py-3 rounded-xl font-medium
+                      flex items-center justify-center space-x-2"
+                  >
+                    <Maximize2 className="w-5 h-5" />
+                    <span>全屏查看原图</span>
+                  </button>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={handleDownload}
+                      className="bg-green-600/20 text-green-300 
+                        px-4 py-3 rounded-xl font-medium
+                        flex items-center justify-center space-x-2 border border-green-600/30"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>下载</span>
+                    </button>
+                    
+                    <button
+                      onClick={handleShare}
+                      className="bg-purple-600/20 text-purple-300 
+                        px-4 py-3 rounded-xl font-medium
+                        flex items-center justify-center space-x-2 border border-purple-600/30"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      <span>分享</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 移动端操作提示 */}
+                <div className="bg-gray-800/30 rounded-xl p-4 border border-gray-700/50 mt-6">
+                  <div className="text-center text-gray-400 text-sm space-y-1">
+                    <p>左右滑动切换照片</p>
+                    <p>上下滑动显示/隐藏详情</p>
+                    <p>点击图片查看原图</p>
+                  </div>
+                </div>
               </div>
-              
-              {/* Navigation Buttons */}
-              {currentIndex > 0 && (
-                <button
-                  onClick={handlePrevPhoto}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-black/70 hover:bg-black/90 
-                    text-white rounded-full transition-all duration-300 backdrop-blur-sm hover:scale-110"
-                >
-                  <ChevronLeft className="w-6 h-6" />
-                </button>
-              )}
-              
-              {currentIndex < album.photos.length - 1 && (
-                <button
-                  onClick={handleNextPhoto}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-black/70 hover:bg-black/90 
-                    text-white rounded-full transition-all duration-300 backdrop-blur-sm hover:scale-110"
-                >
-                  <ChevronRight className="w-6 h-6" />
-                </button>
-              )}
-            </div>
+            </motion.div>
           </div>
+        ) : (
+          /* 桌面端布局保持不变 */
+          <div className="flex flex-col lg:flex-row h-[calc(100vh-3.5rem)]">
+            
+            {/* Photo Display Area */}
+            <div className="flex-1 flex items-center justify-center relative bg-black/50 p-4 lg:p-8">
+              <div className="relative w-full h-full flex items-center justify-center">
+                
+                {/* Loading State */}
+                {!isImageLoaded && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="flex flex-col items-center space-y-3">
+                      <div className="w-12 h-12 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                      <span className="text-lg text-gray-300 font-medium">加载中...</span>
+                      <span className="text-sm text-gray-500">900p 详情画质</span>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Main Image */}
+                <div className="relative group cursor-pointer">
+                  <img
+                    src={displayImageSrc}
+                    alt={photo.alt}
+                    className={`max-w-full max-h-[60vh] lg:max-h-[calc(100vh-8rem)] object-contain 
+                      transition-all duration-500 rounded-lg shadow-2xl
+                      ${isImageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}
+                      group-hover:shadow-blue-500/20`}
+                    style={{ touchAction: 'none' }}
+                    onLoad={() => setIsImageLoaded(true)}
+                    onClick={() => setIsFullScreenOpen(true)}
+                  />
+                  
+                  {/* Hover Overlay */}
+                  {isImageLoaded && (
+                    <div 
+                      className="absolute inset-0 cursor-pointer flex items-center justify-center 
+                        opacity-0 group-hover:opacity-100 transition-all duration-300 
+                        bg-gradient-to-t from-black/60 via-transparent to-black/30 rounded-lg"
+                      onClick={() => setIsFullScreenOpen(true)}
+                    >
+                      <div className="bg-blue-600/90 backdrop-blur-sm text-white px-6 py-3 rounded-full 
+                        flex items-center space-x-2 transform translate-y-4 group-hover:translate-y-0 transition-transform">
+                        <Maximize2 className="w-5 h-5" />
+                        <span className="text-sm font-medium">查看原图</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+              </div>
+            </div>
 
           {/* Info Sidebar */}
           <div className="w-full lg:w-96 bg-gradient-to-b from-gray-900 to-black 
@@ -316,14 +547,15 @@ export default function PhotoDetailClient({ album, photo }: PhotoDetailClientPro
               {/* Navigation Hint */}
               <div className="bg-gray-800/30 rounded-xl p-4 border border-gray-700/50">
                 <div className="text-center text-gray-400 text-sm space-y-1">
-                  <p>使用 ← → 键或点击按钮切换照片</p>
+                  <p>使用 ← → 键切换照片</p>
                   <p>按空格键或点击图片查看原图</p>
                 </div>
               </div>
               
             </div>
           </div>
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Full Screen Modal */}
