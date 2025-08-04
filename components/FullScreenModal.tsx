@@ -334,6 +334,23 @@ export default function FullScreenModal({ photo, isOpen, onClose }: FullScreenMo
     }
   }, [isOpen, resetImage])
 
+  // 动态修改 viewport 以允许全屏时缩放
+  useEffect(() => {
+    if (isOpen) {
+      // 全屏时允许缩放
+      const viewportMeta = document.querySelector('meta[name="viewport"]')
+      if (viewportMeta) {
+        viewportMeta.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes, viewport-fit=cover')
+      }
+    } else {
+      // 关闭时恢复原设置
+      const viewportMeta = document.querySelector('meta[name="viewport"]')
+      if (viewportMeta) {
+        viewportMeta.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover')
+      }
+    }
+  }, [isOpen])
+
   // 自动隐藏退出提示
   useEffect(() => {
     if (isOpen && showExitHint) {

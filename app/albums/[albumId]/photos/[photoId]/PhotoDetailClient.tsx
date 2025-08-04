@@ -13,7 +13,6 @@ import {
   Calendar,
   Maximize2,
   Tag,
-  ChevronUp,
 } from 'lucide-react'
 import { Album, Photo } from '@/types'
 import FullScreenModal from '@/components/FullScreenModal'
@@ -87,7 +86,7 @@ export default function PhotoDetailClient({ album, photo }: PhotoDetailClientPro
     const deltaX = touchStart.x - currentX
     const deltaY = touchStart.y - currentY
     
-    // 判断滑动方向：水平滑动用于切换图片，垂直滑动用于显示/隐藏信息
+    // 只处理水平滑动用于切换图片
     const isHorizontalSwipe = Math.abs(deltaX) > Math.abs(deltaY)
     
     if (isHorizontalSwipe && Math.abs(deltaX) > 10) {
@@ -113,13 +112,6 @@ export default function PhotoDetailClient({ album, photo }: PhotoDetailClientPro
         handleNextPhoto()
       } else if (deltaX < 0 && currentIndex > 0) {
         handlePrevPhoto()
-      }
-    } else if (!isHorizontalSwipe && Math.abs(deltaY) > swipeThreshold) {
-      // 垂直滑动显示/隐藏信息
-      if (deltaY > 0) {
-        setInfoVisible(true) // 向上滑动显示信息
-      } else {
-        setInfoVisible(false) // 向下滑动隐藏信息
       }
     }
     
@@ -256,6 +248,7 @@ export default function PhotoDetailClient({ album, photo }: PhotoDetailClientPro
                   className={`max-w-full max-h-full object-contain
                     transition-all duration-500
                     ${isImageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}
+                  style={{ touchAction: 'manipulation' }}
                   onLoad={() => setIsImageLoaded(true)}
                   onClick={() => setIsFullScreenOpen(true)}
                 />
@@ -386,7 +379,7 @@ export default function PhotoDetailClient({ album, photo }: PhotoDetailClientPro
                 <div className="bg-gray-800/30 rounded-xl p-4 border border-gray-700/50 mt-6">
                   <div className="text-center text-gray-400 text-sm space-y-1">
                     <p>左右滑动切换照片</p>
-                    <p>上下滑动显示/隐藏详情</p>
+                    <p>点击拖拽手柄展开/收起详情</p>
                     <p>点击图片查看原图</p>
                   </div>
                 </div>

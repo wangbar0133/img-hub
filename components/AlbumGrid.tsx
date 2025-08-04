@@ -100,8 +100,8 @@ export default function AlbumGrid({ albums, selectedCategory = 'all' }: AlbumGri
           </div>
         </div>
 
-        {/* Albums Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+        {/* Albums Grid - Masonry Layout */}
+        <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 sm:gap-6 lg:gap-8 space-y-4 sm:space-y-6 lg:space-y-8">
           {filteredAlbums.map((album, index) => {
             const isLoaded = loadedImages[album.id]
             const hasFailed = failedImages[album.id]
@@ -113,16 +113,16 @@ export default function AlbumGrid({ albums, selectedCategory = 'all' }: AlbumGri
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1, duration: 0.6 }}
-                className="group cursor-pointer"
+                className="group cursor-pointer break-inside-avoid"
               >
                 <Link href={`/albums/${album.id}`}>
                   <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-500 group-hover:-translate-y-2">
                     {/* Album Cover */}
-                    <div className="relative h-64 overflow-hidden bg-gray-100">
+                    <div className="relative overflow-hidden bg-gray-100">
                       
                       {/* 加载状态 */}
                       {isLoading && (
-                        <div className="absolute inset-0 bg-gray-200 flex items-center justify-center z-10">
+                        <div className="w-full h-64 bg-gray-200 flex items-center justify-center">
                           <div className="text-center">
                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
                             <p className="text-sm text-gray-500">加载中...</p>
@@ -132,7 +132,7 @@ export default function AlbumGrid({ albums, selectedCategory = 'all' }: AlbumGri
                       
                       {/* 失败状态 */}
                       {hasFailed && (
-                        <div className="absolute inset-0 bg-gray-200 flex items-center justify-center z-10">
+                        <div className="w-full h-64 bg-gray-200 flex items-center justify-center">
                           <div className="text-center">
                             <ImageIcon className="w-8 h-8 text-gray-400 mx-auto mb-2" />
                             <p className="text-sm text-gray-500 mb-2">图片加载失败</p>
@@ -156,16 +156,12 @@ export default function AlbumGrid({ albums, selectedCategory = 'all' }: AlbumGri
                             handleImageLoad(album.id)
                           }
                         }}
-                        className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-110 ${
+                        className={`w-full h-auto object-cover transition-all duration-500 group-hover:scale-110 ${
                           isLoaded ? 'opacity-100' : 'opacity-0'
                         }`}
                         onLoad={() => handleImageLoad(album.id)}
                         onError={() => handleImageError(album.id)}
                         loading="eager"
-                        style={{
-                          minHeight: '100%',
-                          minWidth: '100%'
-                        }}
                       />
                       
                       {/* Featured Badge */}

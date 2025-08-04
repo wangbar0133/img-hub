@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-ImgHub 增强图片管理工具 (Enhanced版本)
-集成图片处理、影集管理、临时存储、直接ECS上传的完整解决方案
-版本: 4.0.0
+ImgHub 图片管理工具
+专注于图片处理和影集管理的本地工具
+版本: 5.0.0
 """
 
 import os
@@ -26,29 +26,15 @@ class Colors:
     CYAN = '\033[0;36m'
     NC = '\033[0m'  # No Color
 
-class ImgManagerEnhanced:
+class ImgManager:
     def __init__(self):
         # 基础配置
         self.script_dir = Path(__file__).parent
         self.project_root = self.script_dir.parent
         
-        # 临时工作目录 - 不影响项目public文件夹
-        self.work_dir = Path.home() / ".img-hub-workspace"
-        self.work_dir.mkdir(exist_ok=True)
-        
-        # 临时目录结构（用于本地测试）
-        self.temp_albums_json = self.work_dir / "albums.json"
-        self.temp_images_dir = self.work_dir / "images"
-        self.temp_original_dir = self.temp_images_dir / "original"
-        self.temp_thumbnails_dir = self.temp_images_dir / "thumbnails"
-        self.temp_detail_dir = self.temp_images_dir / "detail"
-        
-        # 项目原始目录（仅用于直接上传模式）
+        # 项目目录
         self.project_albums_json = self.project_root / "public" / "albums.json"
         self.project_images_dir = self.project_root / "public" / "images"
-        
-        # ECS配置文件
-        self.deploy_config_file = self.project_root / ".env.deploy"
         
         # 图片处理参数
         self.thumbnail_size = 400
@@ -68,9 +54,6 @@ class ImgManagerEnhanced:
         
         # 依赖检查
         self.required_deps = ["convert", "identify", "exiftool"]
-        
-        # 当前工作模式
-        self.current_mode = "local_test"  # local_test 或 direct_upload
 
     def log_step(self, message: str):
         """打印步骤信息"""
@@ -107,30 +90,21 @@ class ImgManagerEnhanced:
             return False
         return True
 
-    def get_active_directories(self):
-        """根据当前模式获取活动目录"""
-        if self.current_mode == "direct_upload":
-            return {
-                'albums_json': self.project_albums_json,
-                'images_dir': self.project_images_dir,
-                'original_dir': self.project_images_dir / "original",
-                'thumbnails_dir': self.project_images_dir / "thumbnails",
-                'detail_dir': self.project_images_dir / "detail"
-            }
-        else:  # local_test
-            return {
-                'albums_json': self.temp_albums_json,
-                'images_dir': self.temp_images_dir,
-                'original_dir': self.temp_original_dir,
-                'thumbnails_dir': self.temp_thumbnails_dir,
-                'detail_dir': self.temp_detail_dir
-            }
+    def get_directories(self):
+        """获取项目目录结构"""
+        return {
+            'albums_json': self.project_albums_json,
+            'images_dir': self.project_images_dir,
+            'original_dir': self.project_images_dir / "original",
+            'thumbnails_dir': self.project_images_dir / "thumbnails",
+            'detail_dir': self.project_images_dir / "detail"
+        }
 
     def init_directories(self):
         """初始化目录结构"""
-        self.log_step("初始化目录结构...")
+        self.log_step("初始化项目目录结构...")
         
-        dirs = self.get_active_directories()
+        dirs = self.get_directories()
         
         # 创建目录
         directories = [
@@ -154,8 +128,7 @@ class ImgManagerEnhanced:
                 json.dump([], f, ensure_ascii=False, indent=2)
             self.log_info(f"创建初始数据文件: {dirs['albums_json']}")
         
-        mode_name = "项目目录" if self.current_mode == "direct_upload" else "临时工作目录"
-        self.log_success(f"目录结构初始化完成 ({mode_name})")
+        self.log_success("项目目录结构初始化完成")
 
     def validate_image(self, file_path: Path) -> bool:
         """验证图片文件"""
@@ -210,16 +183,15 @@ class ImgManagerEnhanced:
         self.log_info(f"原图已保存: {output_file.name} (无压缩)")
 
     def generate_thumbnail(self, input_file: Path, output_file: Path):
-        """生成正方形缩略图"""
+        """生成保持原始比例的缩略图"""
         output_file.parent.mkdir(parents=True, exist_ok=True)
         
         cmd = [
             "convert", str(input_file),
-            "-resize", f"{self.thumbnail_size}x{self.thumbnail_size}^",
-            "-gravity", "center",
-            "-extent", f"{self.thumbnail_size}x{self.thumbnail_size}",
+            "-resize", f"{self.thumbnail_size}x{self.thumbnail_size}>",
             "-quality", str(self.thumbnail_quality),
             "-strip",
+            "-interlace", "Plane",
             str(output_file)
         ]
         
@@ -283,7 +255,7 @@ class ImgManagerEnhanced:
         
         filename = f"{category}_{photo_id}{ext}"
         
-        dirs = self.get_active_directories()
+        dirs = self.get_directories()
         
         # 处理不同尺寸的图片
         try:
@@ -330,8 +302,7 @@ class ImgManagerEnhanced:
                 "tags": []
             }
             
-            mode_info = f"({'项目目录' if self.current_mode == 'direct_upload' else '临时目录'})"
-            self.log_success(f"图片处理完成: {filename} {mode_info}")
+            self.log_success(f"图片处理完成: {filename}")
             return photo_data
             
         except subprocess.CalledProcessError as e:
@@ -340,23 +311,20 @@ class ImgManagerEnhanced:
 
     def load_albums(self) -> List[Dict[str, Any]]:
         """加载影集数据"""
-        dirs = self.get_active_directories()
         try:
-            with open(dirs['albums_json'], 'r', encoding='utf-8') as f:
+            with open(self.project_albums_json, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except (FileNotFoundError, json.JSONDecodeError):
             return []
 
     def save_albums(self, albums: List[Dict[str, Any]]):
         """保存影集数据"""
-        dirs = self.get_active_directories()
-        with open(dirs['albums_json'], 'w', encoding='utf-8') as f:
+        with open(self.project_albums_json, 'w', encoding='utf-8') as f:
             json.dump(albums, f, ensure_ascii=False, indent=2)
 
     def show_albums(self):
         """显示现有影集"""
-        mode_info = "项目目录" if self.current_mode == "direct_upload" else "临时目录"
-        self.log_info(f"当前影集列表 ({mode_info}):")
+        self.log_info("当前影集列表:")
         albums = self.load_albums()
         
         if not albums:
@@ -458,8 +426,7 @@ class ImgManagerEnhanced:
             albums.append(album_data)
             self.save_albums(albums)
             
-            mode_info = f"({'项目目录' if self.current_mode == 'direct_upload' else '临时目录'})"
-            self.log_success(f"影集 '{title}' 创建成功 {mode_info}")
+            self.log_success(f"影集 '{title}' 创建成功")
             return album_id
             
         except KeyboardInterrupt:
@@ -468,8 +435,7 @@ class ImgManagerEnhanced:
 
     def add_photos_to_album(self, photos_path: str, album_id: str, is_directory: bool):
         """添加照片到影集"""
-        mode_info = f"({'项目目录' if self.current_mode == 'direct_upload' else '临时目录'})"
-        self.log_step(f"添加照片到影集: {album_id} {mode_info}")
+        self.log_step(f"添加照片到影集: {album_id}")
         
         albums = self.load_albums()
         album_index = None
@@ -541,8 +507,7 @@ class ImgManagerEnhanced:
 
     def show_data_status(self):
         """显示数据状态"""
-        mode_info = "项目目录" if self.current_mode == "direct_upload" else "临时目录"
-        self.log_step(f"当前数据状态 ({mode_info})")
+        self.log_step("当前数据状态")
         
         # 显示影集信息
         self.show_albums()
@@ -551,7 +516,7 @@ class ImgManagerEnhanced:
         print()
         self.log_info("图片文件统计:")
         
-        dirs = self.get_active_directories()
+        dirs = self.get_directories()
         
         def count_images(directory: Path) -> int:
             if not directory.exists():
@@ -596,10 +561,6 @@ class ImgManagerEnhanced:
             print("请访问 https://nodejs.org/ 安装 Node.js")
             return
         
-        # 如果是临时目录模式，需要先复制数据到项目目录
-        if self.current_mode == "local_test":
-            self.copy_temp_to_project()
-        
         # 切换到项目根目录
         os.chdir(self.project_root)
         
@@ -619,95 +580,32 @@ class ImgManagerEnhanced:
         except KeyboardInterrupt:
             self.log_info("\n预览服务已停止")
 
-    def copy_temp_to_project(self):
-        """将临时目录的数据复制到项目目录（用于预览）"""
-        self.log_step("复制临时数据到项目目录...")
-        
-        # 复制albums.json
-        if self.temp_albums_json.exists():
-            shutil.copy2(self.temp_albums_json, self.project_albums_json)
-        
-        # 复制images目录
-        if self.temp_images_dir.exists():
-            if self.project_images_dir.exists():
-                shutil.rmtree(self.project_images_dir)
-            shutil.copytree(self.temp_images_dir, self.project_images_dir)
-        
-        self.log_success("临时数据已复制到项目目录")
-
-    def cleanup_project_data(self):
-        """清理项目目录中的测试数据"""
-        self.log_step("清理项目目录...")
-        
-        try:
-            # 恢复原始albums.json
-            if self.project_albums_json.exists():
-                with open(self.project_albums_json, 'w', encoding='utf-8') as f:
-                    json.dump([], f, ensure_ascii=False, indent=2)
-            
-            # 清理images目录中的测试图片
-            if self.project_images_dir.exists():
-                for category in self.categories:
-                    cat_dir = self.project_images_dir / category
-                    if cat_dir.exists():
-                        shutil.rmtree(cat_dir)
-                        cat_dir.mkdir(exist_ok=True)
-                
-                # 清理其他目录
-                for subdir in ["detail", "original"]:
-                    sub_path = self.project_images_dir / subdir
-                    if sub_path.exists():
-                        shutil.rmtree(sub_path)
-                        sub_path.mkdir(exist_ok=True)
-                
-                # 清理thumbnails
-                thumb_dir = self.project_images_dir / "thumbnails"
-                if thumb_dir.exists():
-                    shutil.rmtree(thumb_dir)
-                    thumb_dir.mkdir(exist_ok=True)
-                    for category in self.categories:
-                        (thumb_dir / category).mkdir(exist_ok=True)
-            
-            self.log_success("项目目录已清理")
-        except Exception as e:
-            self.log_error(f"清理失败: {e}")
-
     def main_menu(self):
         """主菜单"""
-        self.log_step("ImgHub 增强图片管理工具")
-        self.log_info("请选择操作模式:")
+        self.log_step("ImgHub 图片管理工具")
+        self.log_info("请选择操作:")
         
         print("\n" + "="*50)
-        print("📋 操作模式:")
-        print("  1. 本地测试模式 (临时目录，不影响项目)")
-        print("  2. 直接上传模式 (处理后快速上传图片数据)")
+        print("📋 操作选项:")
+        print("  1. 添加图片到现有影集")
+        print("  2. 创建新影集并添加图片")
         print("  3. 查看数据状态")
         print("  4. 启动本地预览")
-        print("  5. 清理项目目录")
-        print("  6. ECS配置管理")
-        print("  7. 退出")
+        print("  5. 退出")
         print("="*50)
         
         try:
-            choice = input("\n请选择 (1-7): ").strip()
+            choice = input("\n请选择 (1-5): ").strip()
             
             if choice == '1':
-                self.current_mode = "local_test"
-                self.local_test_mode()
+                self.add_photos_interactive()
             elif choice == '2':
-                self.current_mode = "direct_upload"
-                self.direct_upload_mode()
+                self.create_new_album_interactive()
             elif choice == '3':
-                self.show_status_menu()
+                self.show_data_status()
             elif choice == '4':
                 self.start_local_preview()
             elif choice == '5':
-                confirm = input("确定要清理项目目录吗？(y/N): ").strip().lower()
-                if confirm in ['y', 'yes']:
-                    self.cleanup_project_data()
-            elif choice == '6':
-                self.ecs_config_menu()
-            elif choice == '7':
                 self.log_info("退出程序")
                 return
             else:
@@ -716,709 +614,89 @@ class ImgManagerEnhanced:
         except KeyboardInterrupt:
             self.log_info("\n操作已取消")
 
-    def show_status_menu(self):
-        """显示状态菜单"""
-        print("\n" + "="*50)
-        print("📊 数据状态:")
-        print("  1. 临时目录状态")
-        print("  2. 项目目录状态")
-        print("  3. 返回主菜单")
-        print("="*50)
-        
-        try:
-            choice = input("\n请选择 (1-3): ").strip()
-            
-            if choice == '1':
-                self.current_mode = "local_test"
-                self.init_directories()
-                self.show_data_status()
-            elif choice == '2':
-                self.current_mode = "direct_upload"
-                self.init_directories()
-                self.show_data_status()
-            elif choice == '3':
-                self.main_menu()
-            else:
-                self.log_warning("无效选择")
-                self.show_status_menu()
-        except KeyboardInterrupt:
-            self.log_info("\n操作已取消")
-
-    def local_test_mode(self):
-        """本地测试模式"""
-        self.init_directories()
-        self.log_step("本地测试模式 (临时目录)")
-        self.log_info(f"工作目录: {self.work_dir}")
-        self.log_info("此模式在临时目录处理图片，不影响项目public文件夹")
-        
-        # 显示当前影集
-        self.show_albums()
-        
-        print()
-        self.log_info("请选择测试操作:")
-        print("  1. 添加图片到现有影集")
-        print("  2. 创建新影集并添加图片")
-        print("  3. 启动本地预览服务")
-        print("  4. 复制数据到项目目录")
-        print("  5. 上传到ECS（完整部署）")
-        print("  6. 仅上传图片数据到ECS")
-        print("  7. 返回主菜单")
-        print()
-        
-        try:
-            choice = input("请选择 (1-7): ").strip()
-            
-            if choice == '1':
-                self.add_photos_interactive()
-            elif choice == '2':
-                self.create_new_album_interactive()
-            elif choice == '3':
-                self.start_local_preview()
-            elif choice == '4':
-                self.copy_temp_to_project()
-                self.log_success("数据已复制到项目目录")
-            elif choice == '5':
-                self.upload_temp_to_ecs()
-            elif choice == '6':
-                # 先复制到项目目录，然后仅上传数据
-                self.copy_temp_to_project()
-                if self.check_deploy_dependencies():
-                    self.upload_data_only_to_ecs()
-                else:
-                    self.log_error("部署依赖缺失，无法上传")
-            elif choice == '7':
-                self.main_menu()
-            else:
-                self.log_warning("无效选择")
-                self.local_test_mode()
-        except KeyboardInterrupt:
-            self.log_info("\n操作已取消")
-
-    def direct_upload_mode(self):
-        """直接上传模式"""
-        self.init_directories()
-        self.log_step("直接上传模式 (项目目录)")
-        self.log_info("此模式直接在项目目录处理图片，支持快速上传图片数据到ECS")
-        
-        # 显示当前影集
-        self.show_albums()
-        
-        print()
-        self.log_info("请选择操作:")
-        print("  1. 添加图片到现有影集")
-        print("  2. 创建新影集并添加图片")
-        print("  3. 上传图片数据到ECS（推荐）")
-        print("  4. 完整部署到ECS（代码更新时使用）")
-        print("  5. 启动本地预览")
-        print("  6. 返回主菜单")
-        print()
-        
-        try:
-            choice = input("请选择 (1-6): ").strip()
-            
-            if choice == '1':
-                if self.add_photos_interactive():
-                    self.ask_immediate_upload()
-            elif choice == '2':
-                if self.create_new_album_interactive():
-                    self.ask_immediate_upload()
-            elif choice == '3':
-                if self.check_deploy_dependencies():
-                    self.upload_data_only_to_ecs()
-                else:
-                    self.log_error("部署依赖缺失，无法上传")
-            elif choice == '4':
-                if self.check_deploy_dependencies():
-                    self.deploy_to_ecs()
-                else:
-                    self.log_error("部署依赖缺失，无法上传")
-            elif choice == '5':
-                self.start_local_preview()
-            elif choice == '6':
-                self.main_menu()
-            else:
-                self.log_warning("无效选择")
-                self.direct_upload_mode()
-        except KeyboardInterrupt:
-            self.log_info("\n操作已取消")
-
-    def ask_immediate_upload(self):
-        """询问是否立即上传"""
-        print()
-        try:
-            print("选择上传方式:")
-            print("  1. 仅上传图片数据（推荐，快速更新）")
-            print("  2. 完整部署（代码+数据+重启容器）")
-            print("  3. 跳过上传")
-            
-            choice = input("请选择 (1-3): ").strip()
-            
-            if choice == '1':
-                if self.check_deploy_dependencies():
-                    self.upload_data_only_to_ecs()
-                else:
-                    self.log_error("部署依赖缺失，无法上传")
-            elif choice == '2':
-                if self.check_deploy_dependencies():
-                    self.deploy_to_ecs()
-                else:
-                    self.log_error("部署依赖缺失，无法上传")
-            elif choice == '3':
-                self.log_info("跳过上传")
-            else:
-                self.log_warning("无效选择，跳过上传")
-        except KeyboardInterrupt:
-            self.log_info("\n操作已取消")
-
-    def upload_temp_to_ecs(self):
-        """上传临时目录数据到ECS"""
-        self.log_step("上传临时目录数据到ECS...")
-        
-        # 先复制到项目目录
-        self.copy_temp_to_project()
-        
-        # 然后部署到ECS
-        if self.check_deploy_dependencies():
-            self.deploy_to_ecs()
-        else:
-            self.log_error("部署依赖缺失，无法上传")
-
-    def upload_data_only_to_ecs(self):
-        """仅上传图片和数据文件到ECS（不重启镜像）"""
-        try:
-            # 加载ECS配置
-            config = self.load_deploy_config()
-            if not config.get('ECS_HOST'):
-                config = self.interactive_ecs_config()
-            
-            self.log_step("仅上传图片和数据文件到ECS...")
-            self.log_info("当前ECS配置:")
-            self.log_info(f"  主机: {config.get('ECS_HOST')}")
-            self.log_info(f"  用户: {config.get('ECS_USER')}")
-            self.log_info(f"  路径: {config.get('DEPLOY_PATH')}")
-            
-            # 检查连接
-            if not self.check_ecs_connection(config):
-                return False
-            
-            # 上传图片文件
-            if not self.sync_images_to_ecs(config):
-                return False
-            
-            # 上传albums.json
-            if not self.sync_albums_json_to_ecs(config):
-                return False
-            
-            self.log_success("🎉 图片和数据文件上传完成！")
-            self.log_info("容器会自动读取新的数据文件，无需重启")
-            return True
-            
-        except KeyboardInterrupt:
-            self.log_info("\n上传已取消")
-            return False
-        except Exception as e:
-            self.log_error(f"上传过程出错: {e}")
-            return False
-
-    def sync_images_to_ecs(self, config: dict) -> bool:
-        """同步图片文件到ECS"""
-        self.log_step("同步图片文件到ECS...")
-        
-        try:
-            # 构建rsync命令 - 只同步图片目录
-            rsync_cmd = ['rsync', '-avz', '--progress']
-            
-            if config.get('SSH_KEY'):
-                rsync_cmd.extend(['-e', f"ssh -i {config['SSH_KEY']}"])
-            
-            # 源路径：项目的images目录
-            source = str(self.project_images_dir) + "/"
-            # 目标路径：ECS上的images目录
-            target = f"{config['ECS_USER']}@{config['ECS_HOST']}:{config['DEPLOY_PATH']}/public/images/"
-            
-            rsync_cmd.extend([source, target])
-            
-            self.log_info("同步图片文件到ECS...")
-            self.log_info(f"命令: {' '.join(rsync_cmd)}")
-            
-            result = subprocess.run(rsync_cmd)
-            if result.returncode == 0:
-                self.log_success("图片文件同步完成")
-                return True
-            else:
-                self.log_error("图片文件同步失败")
-                return False
-                
-        except Exception as e:
-            self.log_error(f"图片同步过程出错: {e}")
-            return False
-
-    def sync_albums_json_to_ecs(self, config: dict) -> bool:
-        """同步albums.json到ECS"""
-        self.log_step("同步albums.json到ECS...")
-        
-        try:
-            # 构建rsync命令 - 只同步albums.json
-            rsync_cmd = ['rsync', '-avz', '--progress']
-            
-            if config.get('SSH_KEY'):
-                rsync_cmd.extend(['-e', f"ssh -i {config['SSH_KEY']}"])
-            
-            # 源路径：项目的albums.json
-            source = str(self.project_albums_json)
-            # 目标路径：ECS上的albums.json
-            target = f"{config['ECS_USER']}@{config['ECS_HOST']}:{config['DEPLOY_PATH']}/public/albums.json"
-            
-            rsync_cmd.extend([source, target])
-            
-            self.log_info("同步albums.json到ECS...")
-            self.log_info(f"命令: {' '.join(rsync_cmd)}")
-            
-            result = subprocess.run(rsync_cmd)
-            if result.returncode == 0:
-                self.log_success("albums.json同步完成")
-                return True
-            else:
-                self.log_error("albums.json同步失败")
-                return False
-                
-        except Exception as e:
-            self.log_error(f"albums.json同步过程出错: {e}")
-            return False
-
     def add_photos_interactive(self) -> bool:
         """交互式添加图片到现有影集"""
+        self.init_directories()
         album_id = self.select_album()
         if album_id:
             photos_path = input("图片路径 (文件或目录): ").strip()
             is_directory = Path(photos_path).is_dir()
             
             if self.add_photos_to_album(photos_path, album_id, is_directory):
-                mode_info = f"({'项目目录' if self.current_mode == 'direct_upload' else '临时目录'})"
-                self.log_success(f"图片已添加到影集，数据已更新到{mode_info}")
+                self.log_success("图片已添加到影集")
                 return True
         return False
     
     def create_new_album_interactive(self) -> bool:
         """交互式创建新影集并添加图片"""
+        self.init_directories()
         album_id = self.create_album()
         if album_id:
             photos_path = input("图片路径 (文件或目录): ").strip()
             is_directory = Path(photos_path).is_dir()
             
             if self.add_photos_to_album(photos_path, album_id, is_directory):
-                mode_info = f"({'项目目录' if self.current_mode == 'direct_upload' else '临时目录'})"
-                self.log_success(f"新影集已创建，图片已处理，数据已保存到{mode_info}")
+                self.log_success("新影集已创建，图片已处理")
                 return True
         return False
-
-    def ecs_config_menu(self):
-        """ECS配置管理菜单"""
-        print("\n" + "="*50)
-        print("⚙️ ECS配置管理:")
-        print("  1. 查看当前配置")
-        print("  2. 重新配置ECS")
-        print("  3. 测试ECS连接")
-        print("  4. 返回主菜单")
-        print("="*50)
-        
-        try:
-            choice = input("\n请选择 (1-4): ").strip()
-            
-            if choice == '1':
-                self.show_ecs_config()
-            elif choice == '2':
-                self.interactive_ecs_config()
-            elif choice == '3':
-                if self.check_deploy_dependencies():
-                    config = self.load_deploy_config()
-                    if config.get('ECS_HOST'):
-                        self.check_ecs_connection(config)
-                    else:
-                        self.log_error("请先配置ECS信息")
-                else:
-                    self.log_error("部署依赖缺失")
-            elif choice == '4':
-                self.main_menu()
-            else:
-                self.log_warning("无效选择")
-                self.ecs_config_menu()
-        except KeyboardInterrupt:
-            self.log_info("\n操作已取消")
-
-    def show_ecs_config(self):
-        """显示ECS配置"""
-        config = self.load_deploy_config()
-        if not config:
-            self.log_warning("未找到ECS配置")
-            return
-        
-        self.log_info("当前ECS配置:")
-        for key, value in config.items():
-            if key in ['SSH_KEY']:
-                print(f"  {key}: {'已设置' if value else '未设置'}")
-            else:
-                print(f"  {key}: {value}")
-
-    # ==================== ECS 部署功能 ====================
-    
-    def load_deploy_config(self) -> Dict[str, str]:
-        """加载ECS部署配置"""
-        config = {}
-        if self.deploy_config_file.exists():
-            try:
-                with open(self.deploy_config_file, 'r', encoding='utf-8') as f:
-                    for line in f:
-                        line = line.strip()
-                        if line and not line.startswith('#') and '=' in line:
-                            key, value = line.split('=', 1)
-                            config[key.strip()] = value.strip().strip('"\'')
-            except Exception as e:
-                self.log_warning(f"读取配置文件失败: {e}")
-        return config
-    
-    def save_deploy_config(self, config: Dict[str, str]):
-        """保存ECS部署配置"""
-        try:
-            with open(self.deploy_config_file, 'w', encoding='utf-8') as f:
-                f.write("# ImgHub ECS 部署配置\n")
-                for key, value in config.items():
-                    f.write(f'{key}="{value}"\n')
-            self.log_success(f"配置已保存到 {self.deploy_config_file}")
-        except Exception as e:
-            self.log_error(f"保存配置文件失败: {e}")
-    
-    def interactive_ecs_config(self) -> Dict[str, str]:
-        """交互式ECS配置"""
-        self.log_step("ECS 部署配置")
-        config = self.load_deploy_config()
-        
-        # ECS连接信息
-        if not config.get('ECS_HOST'):
-            config['ECS_HOST'] = input("ECS 主机地址 (IP或域名): ").strip()
-        
-        if not config.get('ECS_USER'):
-            user = input("ECS 用户名 [root]: ").strip()
-            config['ECS_USER'] = user if user else 'root'
-        
-        if not config.get('SSH_KEY'):
-            ssh_key = input("SSH 私钥路径 (可选): ").strip()
-            if ssh_key:
-                config['SSH_KEY'] = ssh_key
-        
-        if not config.get('DEPLOY_PATH'):
-            path = input("ECS 部署路径 [/opt/img-hub]: ").strip()
-            config['DEPLOY_PATH'] = path if path else '/opt/img-hub'
-        
-        # 保存配置
-        self.save_deploy_config(config)
-        return config
-    
-    def ssh_exec(self, command: str, config: Dict[str, str]) -> bool:
-        """执行SSH命令"""
-        try:
-            ssh_cmd = ['ssh']
-            if config.get('SSH_KEY'):
-                ssh_cmd.extend(['-i', config['SSH_KEY']])
-            ssh_cmd.append(f"{config['ECS_USER']}@{config['ECS_HOST']}")
-            ssh_cmd.append(command)
-            
-            result = subprocess.run(ssh_cmd, capture_output=True, text=True)
-            if result.returncode != 0:
-                self.log_error(f"SSH命令执行失败: {result.stderr}")
-                return False
-            return True
-        except Exception as e:
-            self.log_error(f"SSH连接失败: {e}")
-            return False
-    
-    def check_ecs_connection(self, config: Dict[str, str]) -> bool:
-        """检查ECS连接"""
-        self.log_step("检查ECS连接...")
-        if self.ssh_exec("echo 'ECS连接测试成功'", config):
-            self.log_success("ECS连接正常")
-            return True
-        else:
-            self.log_error("无法连接到ECS，请检查配置")
-            return False
-    
-    def sync_to_ecs(self, config: Dict[str, str]) -> bool:
-        """同步源码到ECS进行远程构建"""
-        self.log_step("同步源码到ECS...")
-        
-        try:
-            # 检查本地数据
-            if not self.project_albums_json.exists():
-                self.log_warning("本地albums.json不存在，创建空文件")
-                self.project_albums_json.write_text("[]", encoding='utf-8')
-            
-            # 构建rsync命令 - 同步整个项目
-            rsync_cmd = ['rsync', '-avz', '--progress', '--delete']
-            
-            # 排除不需要的文件
-            rsync_cmd.extend([
-                '--exclude=.git',
-                '--exclude=node_modules',
-                '--exclude=.next',
-                '--exclude=out',
-                '--exclude=*.log',
-                '--exclude=.DS_Store',
-                '--exclude=.img-hub-workspace',  # 排除临时工作目录
-                '--exclude=public/images/',      # 排除图片文件（ECS上独立管理）
-                '--exclude=public/albums.json'   # 排除数据文件（ECS上独立管理）
-            ])
-            
-            if config.get('SSH_KEY'):
-                rsync_cmd.extend(['-e', f"ssh -i {config['SSH_KEY']}"])
-            
-            # 源路径：整个项目目录
-            source = str(self.project_root) + "/"
-            # 目标路径：ECS上的部署目录
-            target = f"{config['ECS_USER']}@{config['ECS_HOST']}:{config['DEPLOY_PATH']}/"
-            
-            rsync_cmd.extend([source, target])
-            
-            self.log_info("同步项目源码到ECS...")
-            self.log_info(f"命令: {' '.join(rsync_cmd)}")
-            
-            result = subprocess.run(rsync_cmd)
-            if result.returncode == 0:
-                self.log_success("源码同步完成")
-                return True
-            else:
-                self.log_error("源码同步失败")
-                return False
-                
-        except Exception as e:
-            self.log_error(f"同步过程出错: {e}")
-            return False
-    
-    def build_on_ecs(self, config: Dict[str, str]) -> bool:
-        """在ECS上构建Docker镜像"""
-        self.log_step("在ECS上构建Docker镜像...")
-        
-        build_command = f"""
-            cd {config['DEPLOY_PATH']} && \\
-            echo "清理旧镜像..." && \\
-            docker rmi img-hub:latest 2>/dev/null || true && \\
-            echo "开始构建Docker镜像..." && \\
-            docker build --no-cache -t img-hub:latest . && \\
-            echo "构建完成"
-        """
-        
-        if self.ssh_exec(build_command, config):
-            self.log_success("Docker镜像构建完成")
-            return True
-        else:
-            self.log_error("Docker镜像构建失败")
-            return False
-    
-    def restart_ecs_service(self, config: Dict[str, str]) -> bool:
-        """重启ECS上的服务"""
-        self.log_step("启动/重启ECS服务...")
-        
-        # 更新docker-compose.yml中的镜像名称，然后重启服务
-        restart_command = f"""
-            cd {config['DEPLOY_PATH']} && \\
-            sed -i 's|image:.*|image: img-hub:latest|' docker-compose.yml && \\
-            docker-compose down && \\
-            docker-compose up -d --force-recreate && \\
-            echo "服务启动完成"
-        """
-        
-        if self.ssh_exec(restart_command, config):
-            self.log_success("服务启动完成")
-            return True
-        else:
-            self.log_error("服务启动失败")
-            return False
-    
-    def check_ecs_docker(self, config: Dict[str, str]) -> bool:
-        """检查ECS上的Docker环境"""
-        self.log_step("检查ECS Docker环境...")
-        
-        docker_check_command = """
-            if command -v docker >/dev/null 2>&1 && command -v docker-compose >/dev/null 2>&1; then
-                echo "Docker环境检查通过"
-                docker --version
-                docker-compose --version
-            else
-                echo "Docker环境不完整"
-                exit 1
-            fi
-        """
-        
-        if self.ssh_exec(docker_check_command, config):
-            self.log_success("ECS Docker环境正常")
-            return True
-        else:
-            self.log_error("ECS上Docker环境不完整")
-            self.log_info("请在ECS上安装Docker和Docker Compose")
-            return False
-    
-    def prepare_ecs_structure(self, config: Dict[str, str]) -> bool:
-        """准备ECS目录结构"""
-        self.log_step("准备ECS目录结构...")
-        
-        prepare_command = f"""
-            mkdir -p {config['DEPLOY_PATH']} && \\
-            echo "ECS目录结构准备完成"
-        """
-        
-        if self.ssh_exec(prepare_command, config):
-            self.log_success("ECS目录结构准备完成")
-            return True
-        else:
-            self.log_error("ECS目录结构准备失败")
-            return False
-
-    def deploy_to_ecs(self):
-        """部署到ECS的完整流程（远程构建方案）"""
-        try:
-            # 加载或配置ECS信息
-            config = self.load_deploy_config()
-            if not config.get('ECS_HOST'):
-                config = self.interactive_ecs_config()
-            
-            # 显示配置信息
-            self.log_info("当前ECS配置:")
-            self.log_info(f"  主机: {config.get('ECS_HOST')}")
-            self.log_info(f"  用户: {config.get('ECS_USER')}")
-            self.log_info(f"  路径: {config.get('DEPLOY_PATH')}")
-            self.log_info("  方案: ECS远程构建")
-            
-            # 检查连接
-            if not self.check_ecs_connection(config):
-                return False
-            
-            # 检查ECS Docker环境
-            if not self.check_ecs_docker(config):
-                return False
-            
-            # 准备ECS目录结构
-            if not self.prepare_ecs_structure(config):
-                return False
-            
-            # 同步源码到ECS
-            if not self.sync_to_ecs(config):
-                return False
-            
-            # 在ECS上构建镜像
-            if not self.build_on_ecs(config):
-                return False
-            
-            # 启动服务
-            if not self.restart_ecs_service(config):
-                return False
-            
-            self.log_success("🎉 ECS远程构建部署完成！")
-            self.log_info(f"访问地址: http://{config['ECS_HOST']}")
-            return True
-            
-        except KeyboardInterrupt:
-            self.log_info("\n部署已取消")
-            return False
-        except Exception as e:
-            self.log_error(f"部署过程出错: {e}")
-            return False
-
-    def check_deploy_dependencies(self) -> bool:
-        """检查部署相关依赖"""
-        deps = ["rsync"]
-        missing = []
-        
-        for dep in deps:
-            try:
-                subprocess.run([dep, '--version'], capture_output=True, check=True)
-            except (subprocess.CalledProcessError, FileNotFoundError):
-                missing.append(dep)
-        
-        if missing:
-            self.log_error(f"缺少部署依赖: {', '.join(missing)}")
-            self.log_info("请安装缺少的依赖:")
-            self.log_info("macOS: brew install rsync openssh")
-            self.log_info("Ubuntu: sudo apt install rsync openssh-client")
-            return False
-        
-        return True
 
     def show_help(self):
         """显示帮助信息"""
         print(f"""
-{Colors.CYAN}ImgHub 增强图片管理工具 v4.0.0{Colors.NC}
-{Colors.YELLOW}Enhanced版本 - 临时目录 + 直接上传 + 项目目录保护{Colors.NC}
+{Colors.CYAN}ImgHub 图片管理工具 v5.0.0{Colors.NC}
+{Colors.YELLOW}专注于图片处理和影集管理的本地工具{Colors.NC}
 
 {Colors.GREEN}命令说明:{Colors.NC}
   {Colors.BLUE}menu{Colors.NC}          - 显示交互菜单（默认）
-  {Colors.BLUE}local-test{Colors.NC}    - 本地测试模式，在临时目录处理图片
-  {Colors.BLUE}direct-upload{Colors.NC} - 直接上传模式，在项目目录处理并立即上传
-  {Colors.BLUE}local-preview{Colors.NC} - 启动本地预览服务器
+  {Colors.BLUE}add{Colors.NC}           - 添加图片到现有影集
+  {Colors.BLUE}create{Colors.NC}        - 创建新影集并添加图片
   {Colors.BLUE}status{Colors.NC}        - 查看数据状态（影集和图片统计）
-  {Colors.BLUE}deploy{Colors.NC}        - 部署到ECS（同步代码+构建+重启）
-  {Colors.BLUE}upload-data{Colors.NC}   - 仅上传图片和数据文件到ECS（不重启容器）
-  {Colors.BLUE}ecs-config{Colors.NC}    - 配置ECS连接信息
+  {Colors.BLUE}preview{Colors.NC}       - 启动本地预览服务器
   {Colors.BLUE}help{Colors.NC}          - 显示此帮助信息
 
 {Colors.GREEN}使用示例:{Colors.NC}
   python3 scripts/img-manager.py                    # 交互菜单
-  python3 scripts/img-manager.py local-test         # 本地测试模式
-  python3 scripts/img-manager.py deploy             # 完整部署到ECS
-  python3 scripts/img-manager.py upload-data        # 仅上传图片数据
+  python3 scripts/img-manager.py add                # 添加图片到现有影集
+  python3 scripts/img-manager.py create             # 创建新影集
   python3 scripts/img-manager.py status             # 查看状态
+  python3 scripts/img-manager.py preview            # 启动本地预览
 
 {Colors.GREEN}功能特点:{Colors.NC}
-  • 🛡️  临时目录模式 - 不影响项目public文件夹
-  • 🚀 直接上传模式 - 处理后立即上传到ECS
-  • 📁 智能目录管理 - 自动切换工作目录
-  • 🎯 便捷操作流程 - 一站式图片处理和部署
-  • 🔄 自动更新albums.json - 图片上传时自动更新数据文件
+  • 🖼️  智能图片处理 - 自动生成4种尺寸图片
+  • 📁 项目目录管理 - 直接在项目目录处理图片
+  • 🎯 简化操作流程 - 专注于核心图片处理功能
+  • 📊 完整数据管理 - 自动更新albums.json
 
-{Colors.GREEN}操作模式详解:{Colors.NC}
-  {Colors.BLUE}本地测试模式{Colors.NC} - 在~/.img-hub-workspace/临时目录处理图片
-    ├── 创建新影集或添加照片到现有影集
-    ├── 自动生成4种尺寸图片（缩略图、显示图、详情图、原图）
-    ├── 提取EXIF信息和生成图片元数据
-    └── 可选择上传到ECS或本地预览
-
-  {Colors.BLUE}直接上传模式{Colors.NC} - 在项目public/目录直接处理图片
-    ├── 直接在项目目录生成图片文件
-    ├── 更新项目的albums.json文件
-    ├── 默认仅上传图片数据（推荐，快速生效）
-    └── 可选择完整部署（代码更新时使用）
-
-  {Colors.BLUE}ECS部署流程{Colors.NC} - 代码同步、Docker构建、服务重启
-    ├── rsync同步项目代码（排除数据文件）
-    ├── 远程构建Docker镜像（强制清除缓存）
-    └── 重启Docker容器（强制重建）
+{Colors.GREEN}图片处理:{Colors.NC}
+  • 缩略图: 400px 等比缩放，75% 质量
+  • 显示图: 800px 等比缩放，85% 质量  
+  • 详情图: 900px 等比缩放，90% 质量
+  • 原图: 完整保存，无压缩
 
 {Colors.GREEN}目录结构:{Colors.NC}
-  临时目录: ~/.img-hub-workspace/
-    ├── albums.json        # 临时影集数据
-    ├── images/           # 临时图片文件
-    │   ├── original/     # 原图
-    │   ├── detail/       # 详情图(900px)
-    │   └── thumbnails/   # 缩略图(400px)
-    └── [category]/       # 显示图(800px)
-
-  项目目录: ./public/
-    ├── albums.json       # 项目影集数据
-    └── images/          # 项目图片文件
-
-{Colors.GREEN}典型工作流程:{Colors.NC}
-  {Colors.BLUE}开发测试:{Colors.NC} local-test → local-preview → 确认效果 → upload-data
-  {Colors.BLUE}图片快传:{Colors.NC} direct-upload → upload-data → 立即生效（推荐）
-  {Colors.BLUE}代码部署:{Colors.NC} 代码更新后 → deploy → 重启生效
+  ./public/
+    ├── albums.json       # 影集数据文件
+    └── images/          # 图片文件
+        ├── travel/      # 旅行分类显示图
+        ├── cosplay/     # Cosplay分类显示图
+        ├── detail/      # 详情图(900px)
+        ├── original/    # 原图
+        └── thumbnails/  # 缩略图
+            ├── travel/
+            └── cosplay/
 
 {Colors.GREEN}依赖要求:{Colors.NC}
-  • 本地: Python 3.6+, ImageMagick, ExifTool, rsync, ssh
-  • ECS: Docker, Docker Compose
+  • Python 3.6+
+  • ImageMagick (convert, identify)
+  • ExifTool
+  • Node.js & npm (用于本地预览)
 """)
 
     def main(self):
         """主函数"""
-        parser = argparse.ArgumentParser(description="ImgHub 增强图片管理工具")
+        parser = argparse.ArgumentParser(description="ImgHub 图片管理工具")
         parser.add_argument('command', nargs='?', choices=[
-            'menu', 'local-test', 'direct-upload', 'local-preview', 'status', 'deploy', 'upload-data', 'ecs-config', 'help'
+            'menu', 'add', 'create', 'status', 'preview', 'help'
         ], default='menu', help='命令')
         
         args = parser.parse_args()
@@ -1429,32 +707,20 @@ class ImgManagerEnhanced:
             if not self.check_dependencies():
                 sys.exit(1)
             self.main_menu()
-        elif args.command == 'local-test':
+        elif args.command == 'add':
             if not self.check_dependencies():
                 sys.exit(1)
-            self.current_mode = "local_test"
-            self.local_test_mode()
-        elif args.command == 'direct-upload':
+            self.add_photos_interactive()
+        elif args.command == 'create':
             if not self.check_dependencies():
                 sys.exit(1)
-            self.current_mode = "direct_upload"
-            self.direct_upload_mode()
+            self.create_new_album_interactive()
         elif args.command == 'status':
-            self.show_status_menu()
-        elif args.command == 'local-preview':
+            self.init_directories()
+            self.show_data_status()
+        elif args.command == 'preview':
             self.start_local_preview()
-        elif args.command == 'deploy':
-            if not self.check_deploy_dependencies():
-                sys.exit(1)
-            self.deploy_to_ecs()
-        elif args.command == 'upload-data':
-            if not self.check_deploy_dependencies():
-                sys.exit(1)
-            self.upload_data_only_to_ecs()
-        elif args.command == 'ecs-config':
-            config = self.interactive_ecs_config()
-            self.log_success("ECS配置已更新")
 
 if __name__ == "__main__":
-    manager = ImgManagerEnhanced()
-    manager.main() 
+    manager = ImgManager()
+    manager.main()

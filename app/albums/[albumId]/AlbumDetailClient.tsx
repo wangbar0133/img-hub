@@ -141,8 +141,8 @@ export default function AlbumDetailClient({ album: initialAlbum }: AlbumDetailCl
           </div>
         </motion.div>
 
-        {/* Photo Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-6">
+        {/* Photo Grid - Masonry Layout */}
+        <div className="columns-2 sm:columns-3 md:columns-3 lg:columns-4 xl:columns-5 gap-3 sm:gap-4 lg:gap-6 space-y-3 sm:space-y-4 lg:space-y-6">
           {album.photos.map((photo, index) => {
             const isLoaded = loadedImages[photo.id]
             const hasFailed = failedImages[photo.id]
@@ -154,20 +154,20 @@ export default function AlbumDetailClient({ album: initialAlbum }: AlbumDetailCl
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1, duration: 0.6 }}
-              className="group cursor-pointer"
+              className="group cursor-pointer break-inside-avoid"
             >
               <Link href={`/albums/${albumId}/photos/${photo.id}`}>
-                <div className="relative aspect-square rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 group-hover:-translate-y-1">
+                <div className="relative rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 group-hover:-translate-y-1">
                   {/* 加载状态指示器 */}
                   {!loadedImages[photo.id] && !failedImages[photo.id] && (
-                    <div className="absolute inset-0 bg-gray-200 image-loading flex items-center justify-center">
+                    <div className="w-full h-64 bg-gray-200 image-loading flex items-center justify-center">
                       <ImageIcon className="w-6 h-6 text-gray-400" />
                     </div>
                   )}
                   
                   {/* 加载失败显示 */}
                   {failedImages[photo.id] && (
-                    <div className="absolute inset-0 bg-gray-200 flex items-center justify-center">
+                    <div className="w-full h-64 bg-gray-200 flex items-center justify-center">
                       <div className="text-center">
                         <ImageIcon className="w-6 h-6 text-gray-400 mx-auto mb-1" />
                         <p className="text-xs text-gray-500">加载失败</p>
@@ -183,17 +183,13 @@ export default function AlbumDetailClient({ album: initialAlbum }: AlbumDetailCl
                         handleImageLoad(photo.id)
                       }
                     }}
-                    className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${
+                    className={`w-full h-auto object-cover transition-all duration-500 group-hover:scale-105 ${
                       loadedImages[photo.id] ? 'opacity-100' : 'opacity-0'
                     }`}
                     onLoad={() => handleImageLoad(photo.id)}
                     onError={() => handleImageError(photo.id)}
                     loading="eager"
                     fetchPriority={index < 6 ? "high" : "low"}
-                    style={{
-                      minHeight: '100%',
-                      minWidth: '100%'
-                    }}
                   />
                   
                   {/* Quality Indicator */}
