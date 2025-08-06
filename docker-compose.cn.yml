@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  img-hub:
+    # 使用阿里云镜像仓库（国内加速）
+    image: registry.cn-hangzhou.aliyuncs.com/wangbar01334/img-hub:latest
+    container_name: img-hub-app
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    # volumes:
+      # 所有文件都已打包到镜像中，不需要挂载
+    
+    environment:
+      - NODE_ENV=production
+    networks:
+      - img-hub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.img-hub.rule=Host(`localhost`)"
+      - "traefik.http.services.img-hub.loadbalancer.server.port=80"
+
+networks:
+  img-hub-network:
+    driver: bridge
