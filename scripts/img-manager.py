@@ -53,7 +53,7 @@ class ImgManager:
         self.categories = ["travel", "cosplay"]
         
         # 依赖检查
-        self.required_deps = ["convert", "identify", "exiftool"]
+        self.required_deps = ["magick", "exiftool"]
 
     def log_step(self, message: str):
         """打印步骤信息"""
@@ -87,6 +87,7 @@ class ImgManager:
             print("\n安装方法:")
             print("macOS: brew install imagemagick exiftool")
             print("Ubuntu: sudo apt install imagemagick libimage-exiftool-perl")
+            print("\n注意: 需要 ImageMagick v7+ (使用 magick 命令)")
             return False
         return True
 
@@ -139,7 +140,7 @@ class ImgManager:
         # 检查文件类型
         try:
             result = subprocess.run(
-                ["identify", "-format", "%m", str(file_path)],
+                ["magick", "identify", "-format", "%m", str(file_path)],
                 capture_output=True, text=True, check=True
             )
             format_type = result.stdout.strip().lower()
@@ -163,7 +164,7 @@ class ImgManager:
         output_file.parent.mkdir(parents=True, exist_ok=True)
         
         cmd = [
-            "convert", str(input_file),
+            "magick", str(input_file),
             "-resize", f"{max_size}x{max_size}>",
             "-quality", str(quality),
             "-strip",
@@ -187,7 +188,7 @@ class ImgManager:
         output_file.parent.mkdir(parents=True, exist_ok=True)
         
         cmd = [
-            "convert", str(input_file),
+            "magick", str(input_file),
             "-resize", f"{self.thumbnail_size}x{self.thumbnail_size}>",
             "-quality", str(self.thumbnail_quality),
             "-strip",
@@ -589,23 +590,26 @@ class ImgManager:
         print("📋 操作选项:")
         print("  1. 添加图片到现有影集")
         print("  2. 创建新影集并添加图片")
-        print("  3. 查看数据状态")
-        print("  4. 启动本地预览")
-        print("  5. 退出")
+        print("  3. 删除影集")
+        print("  4. 查看数据状态")
+        print("  5. 启动本地预览")
+        print("  6. 退出")
         print("="*50)
         
         try:
-            choice = input("\n请选择 (1-5): ").strip()
+            choice = input("\n请选择 (1-6): ").strip()
             
             if choice == '1':
                 self.add_photos_interactive()
             elif choice == '2':
                 self.create_new_album_interactive()
             elif choice == '3':
-                self.show_data_status()
+                self.delete_album_interactive()
             elif choice == '4':
-                self.start_local_preview()
+                self.show_data_status()
             elif choice == '5':
+                self.start_local_preview()
+            elif choice == '6':
                 self.log_info("退出程序")
                 return
             else:
@@ -627,18 +631,327 @@ class ImgManager:
                 return True
         return False
     
+    def create_album_with_photos(self, photos_path: str, is_directory: bool) -> bool:
+        """原子性创建新影集并添加图片"""
+        self.log_step("原子性创建新影集")
+        
+        try:
+            # 获取基本信息
+            album_id = input("影集ID (英文，用于URL): ").strip()
+            if not album_id:
+                self.log_error("影集ID不能为空")
+                return False
+            
+            title = input("影集标题: ").strip()
+            if not title:
+                self.log_error("影集标题不能为空")
+                return False
+            
+            description = input("影集描述 (可选): ").strip()
+            
+            # 选择分类
+            print("\n可选分类:")
+            for i, cat in enumerate(self.categories, 1):
+                print(f"  {i}. {cat}")
+            
+            while True:
+                try:
+                    cat_choice = input(f"选择分类 (1-{len(self.categories)}): ")
+                    cat_index = int(cat_choice) - 1
+                    if 0 <= cat_index < len(self.categories):
+                        category = self.categories[cat_index]
+                        break
+                    else:
+                        self.log_error("无效选择")
+                except ValueError:
+                    self.log_error("请输入数字")
+            
+            location = input("拍摄地点 (可选): ").strip()
+            
+            featured_input = input("是否为精选影集? (y/N): ").strip().lower()
+            featured = featured_input in ['y', 'yes']
+            
+            # 验证照片路径
+            if not Path(photos_path).exists():
+                self.log_error(f"路径不存在: {photos_path}")
+                return False
+            
+            # 获取图片路径列表
+            image_paths = []
+            if is_directory:
+                photos_dir = Path(photos_path)
+                for ext in ['*.jpg', '*.jpeg', '*.png', '*.webp', '*.tiff']:
+                    image_paths.extend(photos_dir.glob(ext))
+                    image_paths.extend(photos_dir.glob(ext.upper()))
+            else:
+                image_paths = [Path(photos_path)]
+            
+            if not image_paths:
+                self.log_error("未找到图片文件")
+                return False
+            
+            # 验证所有图片文件
+            self.log_info(f"验证 {len(image_paths)} 张图片...")
+            for image_path in image_paths:
+                if not self.validate_image(image_path):
+                    self.log_error(f"图片验证失败，取消创建影集")
+                    return False
+            
+            # 检查影集ID是否已存在
+            albums = self.load_albums()
+            if any(album['id'] == album_id for album in albums):
+                self.log_error(f"影集ID '{album_id}' 已存在")
+                return False
+            
+            # 开始原子性操作
+            processed_files = []  # 记录已处理的文件，用于回滚
+            new_photos = []
+            
+            try:
+                # 处理所有图片
+                self.log_info("开始处理图片...")
+                for i, image_path in enumerate(image_paths, 1):
+                    self.log_info(f"处理图片 {i}/{len(image_paths)}: {image_path.name}")
+                    
+                    # 生成文件名
+                    photo_id = self.generate_id()
+                    ext = image_path.suffix.lower()
+                    if ext not in ['.jpg', '.jpeg', '.png', '.webp']:
+                        ext = '.jpg'
+                    
+                    filename = f"{category}_{photo_id}{ext}"
+                    dirs = self.get_directories()
+                    
+                    # 定义要创建的文件路径
+                    files_to_create = {
+                        'display': dirs['images_dir'] / category / filename,
+                        'detail': dirs['detail_dir'] / filename,
+                        'original': dirs['original_dir'] / filename,
+                        'thumbnail': dirs['thumbnails_dir'] / category / filename
+                    }
+                    
+                    # 处理图片文件
+                    try:
+                        # 展示图 (800px)
+                        self.compress_image(image_path, files_to_create['display'], 
+                                          self.display_size, self.display_quality)
+                        processed_files.append(files_to_create['display'])
+                        
+                        # 详情图 (900px)
+                        self.compress_image(image_path, files_to_create['detail'], 
+                                          self.detail_size, self.detail_quality)
+                        processed_files.append(files_to_create['detail'])
+                        
+                        # 原图处理
+                        if self.compress_original:
+                            self.compress_image(image_path, files_to_create['original'], 
+                                              self.original_max_size, self.original_quality)
+                        else:
+                            self.copy_original_image(image_path, files_to_create['original'])
+                        processed_files.append(files_to_create['original'])
+                        
+                        # 缩略图
+                        self.generate_thumbnail(image_path, files_to_create['thumbnail'])
+                        processed_files.append(files_to_create['thumbnail'])
+                        
+                        # 提取元数据
+                        metadata = self.extract_metadata(image_path)
+                        
+                        # 构建照片数据
+                        photo_data = {
+                            "id": photo_id,
+                            "src": f"/images/{category}/{filename}",
+                            "detailSrc": f"/images/detail/{filename}",
+                            "originalSrc": f"/images/original/{filename}",
+                            "thumbnail": f"/images/thumbnails/{category}/{filename}",
+                            "alt": image_path.stem,
+                            "title": image_path.stem,
+                            "description": "",
+                            "location": "",
+                            "camera": metadata["camera"],
+                            "settings": metadata["settings"],
+                            "tags": []
+                        }
+                        
+                        new_photos.append(photo_data)
+                        
+                    except Exception as e:
+                        self.log_error(f"处理图片失败: {image_path.name} - {e}")
+                        raise
+                
+                # 创建影集数据
+                album_data = {
+                    "id": album_id,
+                    "title": title,
+                    "description": description,
+                    "coverImage": new_photos[0]['src'] if new_photos else "",
+                    "category": category,
+                    "featured": featured,
+                    "location": location,
+                    "createdAt": datetime.now().strftime("%Y-%m-%d"),
+                    "photoCount": len(new_photos),
+                    "photos": new_photos
+                }
+                
+                # 保存到albums.json
+                albums.append(album_data)
+                self.save_albums(albums)
+                
+                self.log_success(f"影集 '{title}' 创建成功")
+                self.log_success(f"成功处理 {len(new_photos)} 张图片")
+                return True
+                
+            except Exception as e:
+                # 发生错误时回滚所有已创建的文件
+                self.log_error(f"创建影集过程中发生错误: {e}")
+                self.log_info("正在回滚已创建的文件...")
+                
+                for file_path in processed_files:
+                    try:
+                        if file_path.exists():
+                            file_path.unlink()
+                            self.log_info(f"已删除: {file_path.relative_to(self.project_root)}")
+                    except Exception as cleanup_error:
+                        self.log_warning(f"清理文件失败: {file_path} - {cleanup_error}")
+                
+                self.log_info("回滚完成，没有任何改变")
+                return False
+                
+        except KeyboardInterrupt:
+            self.log_info("\n操作已取消")
+            return False
+    
     def create_new_album_interactive(self) -> bool:
         """交互式创建新影集并添加图片"""
         self.init_directories()
-        album_id = self.create_album()
-        if album_id:
+        
+        try:
             photos_path = input("图片路径 (文件或目录): ").strip()
-            is_directory = Path(photos_path).is_dir()
+            if not photos_path:
+                self.log_error("图片路径不能为空")
+                return False
             
-            if self.add_photos_to_album(photos_path, album_id, is_directory):
-                self.log_success("新影集已创建，图片已处理")
-                return True
-        return False
+            is_directory = Path(photos_path).is_dir()
+            return self.create_album_with_photos(photos_path, is_directory)
+            
+        except KeyboardInterrupt:
+            self.log_info("\n操作已取消")
+            return False
+
+    def delete_album(self, album_id: str) -> bool:
+        """删除指定影集及其所有图片文件"""
+        albums = self.load_albums()
+        album_index = None
+        album = None
+        
+        # 找到目标影集
+        for i, a in enumerate(albums):
+            if a['id'] == album_id:
+                album_index = i
+                album = a
+                break
+        
+        if album is None:
+            self.log_error(f"影集不存在: {album_id}")
+            return False
+        
+        self.log_step(f"删除影集: {album['title']} ({album_id})")
+        
+        dirs = self.get_directories()
+        deleted_files = 0
+        
+        # 删除所有相关的图片文件
+        for photo in album['photos']:
+            photo_id = photo['id']
+            category = album['category']
+            
+            # 从路径中提取文件名
+            src_path = photo.get('src', '')
+            if src_path:
+                filename = src_path.split('/')[-1]
+                
+                # 删除各种尺寸的图片文件
+                files_to_delete = [
+                    dirs['images_dir'] / category / filename,  # 展示图
+                    dirs['detail_dir'] / filename,             # 详情图
+                    dirs['original_dir'] / filename,           # 原图
+                    dirs['thumbnails_dir'] / category / filename,  # 缩略图
+                ]
+                
+                for file_path in files_to_delete:
+                    if file_path.exists():
+                        try:
+                            file_path.unlink()
+                            deleted_files += 1
+                            self.log_info(f"已删除: {file_path.relative_to(self.project_root)}")
+                        except OSError as e:
+                            self.log_warning(f"删除文件失败: {file_path} - {e}")
+        
+        # 从影集列表中移除
+        albums.pop(album_index)
+        self.save_albums(albums)
+        
+        self.log_success(f"影集 '{album['title']}' 已删除")
+        self.log_success(f"共删除 {deleted_files} 个图片文件")
+        return True
+
+    def delete_album_interactive(self) -> bool:
+        """交互式删除影集"""
+        self.log_step("删除影集")
+        
+        albums = self.load_albums()
+        if not albums:
+            self.log_warning("没有现有影集")
+            return False
+        
+        # 显示现有影集
+        self.show_albums()
+        
+        # 选择要删除的影集
+        print()
+        self.log_info("请选择要删除的影集:")
+        for i, album in enumerate(albums, 1):
+            print(f"  {i}. {album['id']} - {album['title']} ({album['category']}) - {album['photoCount']}张照片")
+        print()
+        
+        try:
+            while True:
+                choice = input(f"请输入选择 (1-{len(albums)}) 或 'q' 退出: ").strip()
+                
+                if choice.lower() == 'q':
+                    self.log_info("操作已取消")
+                    return False
+                
+                try:
+                    index = int(choice) - 1
+                    if 0 <= index < len(albums):
+                        selected_album = albums[index]
+                        break
+                    else:
+                        self.log_error(f"无效选择，请输入 1-{len(albums)} 之间的数字")
+                except ValueError:
+                    self.log_error("无效输入，请输入数字")
+            
+            # 确认删除
+            print(f"\n{Colors.YELLOW}⚠️  警告: 此操作将永久删除影集及其所有图片文件！{Colors.NC}")
+            print(f"影集信息:")
+            print(f"  ID: {selected_album['id']}")
+            print(f"  标题: {selected_album['title']}")
+            print(f"  分类: {selected_album['category']}")
+            print(f"  照片数量: {selected_album['photoCount']}")
+            print()
+            
+            confirm = input("确认删除? 请输入 'DELETE' 来确认: ").strip()
+            
+            if confirm == 'DELETE':
+                return self.delete_album(selected_album['id'])
+            else:
+                self.log_info("操作已取消")
+                return False
+                
+        except KeyboardInterrupt:
+            self.log_info("\n操作已取消")
+            return False
 
     def show_help(self):
         """显示帮助信息"""
@@ -650,6 +963,7 @@ class ImgManager:
   {Colors.BLUE}menu{Colors.NC}          - 显示交互菜单（默认）
   {Colors.BLUE}add{Colors.NC}           - 添加图片到现有影集
   {Colors.BLUE}create{Colors.NC}        - 创建新影集并添加图片
+  {Colors.BLUE}delete{Colors.NC}        - 删除影集及其所有图片文件
   {Colors.BLUE}status{Colors.NC}        - 查看数据状态（影集和图片统计）
   {Colors.BLUE}preview{Colors.NC}       - 启动本地预览服务器
   {Colors.BLUE}help{Colors.NC}          - 显示此帮助信息
@@ -658,6 +972,7 @@ class ImgManager:
   python3 scripts/img-manager.py                    # 交互菜单
   python3 scripts/img-manager.py add                # 添加图片到现有影集
   python3 scripts/img-manager.py create             # 创建新影集
+  python3 scripts/img-manager.py delete             # 删除影集
   python3 scripts/img-manager.py status             # 查看状态
   python3 scripts/img-manager.py preview            # 启动本地预览
 
@@ -687,7 +1002,7 @@ class ImgManager:
 
 {Colors.GREEN}依赖要求:{Colors.NC}
   • Python 3.6+
-  • ImageMagick (convert, identify)
+  • ImageMagick (magick command)
   • ExifTool
   • Node.js & npm (用于本地预览)
 """)
@@ -696,7 +1011,7 @@ class ImgManager:
         """主函数"""
         parser = argparse.ArgumentParser(description="ImgHub 图片管理工具")
         parser.add_argument('command', nargs='?', choices=[
-            'menu', 'add', 'create', 'status', 'preview', 'help'
+            'menu', 'add', 'create', 'delete', 'status', 'preview', 'help'
         ], default='menu', help='命令')
         
         args = parser.parse_args()
@@ -715,6 +1030,8 @@ class ImgManager:
             if not self.check_dependencies():
                 sys.exit(1)
             self.create_new_album_interactive()
+        elif args.command == 'delete':
+            self.delete_album_interactive()
         elif args.command == 'status':
             self.init_directories()
             self.show_data_status()
