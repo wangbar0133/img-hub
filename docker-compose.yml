@@ -11,6 +11,7 @@ services:
       # 持久化数据目录
       - ./data:/app/data:rw
       - ./public/images:/app/public/images:rw
+      - ./public/albums.json:/app/public/albums.json:rw
       # 应用日志持久化
       - ./logs:/app/logs:rw
     
