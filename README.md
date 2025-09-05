@@ -243,13 +243,20 @@ curl http://localhost/api/admin/auth
 # 3. 检查环境变量
 docker exec img-hub-server env | grep ADMIN
 
-# 4. 重新生成凭据
+# 4. HTTP部署的cookie问题 - 建议升级HTTPS
+# HTTP环境下cookie secure标志导致登录失败
+curl -X POST http://server-ip/api/admin/auth/ \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin123"}'
+
+# 5. HTTPS部署解决cookie安全问题
+curl -X POST https://server-ip/api/admin/auth/ \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"your-password"}'
+
+# 6. 重新生成凭据
 ./generate-credentials.sh
 docker-compose restart
-
-# 5. 确认访问地址正确
-# 正确: http://server-ip/admin (使用HTTP默认端口80)
-# 错误: http://server-ip:3000/admin (旧配置端口)
 ```
 
 **图片无法显示**
@@ -361,16 +368,77 @@ sudo firewall-cmd --reload
 
 #### HTTPS 配置
 
+**重要**: 如果使用HTTP部署，管理后台登录可能因cookie安全策略失败，建议配置HTTPS。
+
+##### 1. 安装 SSL 证书工具
 ```bash
-# 安装 Certbot
-sudo apt install certbot python3-certbot-nginx
+# Debian/Ubuntu
+sudo apt update && sudo apt install certbot -y
 
-# 申请SSL证书
-sudo certbot --nginx -d your-domain.com
+# 或使用 Snap 安装最新版本 (推荐)
+sudo apt install snapd -y
+sudo snap install --classic certbot
+sudo ln -s /snap/bin/certbot /usr/bin/certbot
 
-# 自动续期
-echo "0 12 * * * /usr/bin/certbot renew --quiet" | sudo crontab -
+# CentOS/RHEL  
+sudo yum install certbot -y
+# 或 sudo dnf install certbot -y
+
+# 验证安装
+certbot --version
 ```
+
+##### 2. 停止服务并获取证书
+```bash
+# 停止当前服务释放80端口
+docker-compose down
+
+# 确认80端口已释放
+sudo netstat -tlnp | grep :80
+
+# 获取 Let's Encrypt SSL证书 (替换为你的域名和邮箱)
+sudo certbot certonly \
+  --standalone \
+  --email your-email@example.com \
+  --agree-tos \
+  --non-interactive \
+  -d img.neicun.online
+
+# 验证证书文件
+sudo ls -la /etc/letsencrypt/live/img.neicun.online/
+```
+
+##### 3. 启用 HTTPS 并部署
+```bash
+# 在 .env.production 中启用 HTTPS
+echo "FORCE_HTTPS=true" >> .env.production
+
+# 部署服务 (包含 Nginx 反向代理)
+docker-compose --env-file .env.production up -d
+```
+
+##### 4. 验证 HTTPS 部署
+```bash
+# 检查服务状态
+docker-compose ps
+
+# 验证 HTTPS 访问
+curl -I https://img.neicun.online/
+curl -I https://img.neicun.online/admin
+```
+
+##### 5. 设置证书自动续期
+```bash
+# 添加自动续期任务
+sudo crontab -e
+
+# 添加以下行 (替换为实际项目路径)
+0 3 * * * /usr/bin/certbot renew --quiet && cd /opt/img-hub && docker-compose restart nginx
+```
+
+**HTTPS 部署后的访问地址**:
+- 主站: `https://img.neicun.online/`  
+- 管理后台: `https://img.neicun.online/admin`
 
 ### 运维管理
 

@@ -37,7 +37,8 @@ export async function POST(request: NextRequest) {
     
     response.cookies.set('admin-token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      // HTTPS环境下启用secure标志
+      secure: process.env.FORCE_HTTPS === 'true',
       sameSite: 'strict',
       maxAge: 24 * 60 * 60 * 1000, // 24小时
       path: '/'
