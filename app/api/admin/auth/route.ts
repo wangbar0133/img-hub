@@ -39,7 +39,8 @@ export async function POST(request: NextRequest) {
       httpOnly: true,
       // HTTPS环境下启用secure标志
       secure: process.env.FORCE_HTTPS === 'true',
-      sameSite: 'strict',
+      // 开发环境使用lax，生产环境使用strict
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
       maxAge: 24 * 60 * 60 * 1000, // 24小时
       path: '/'
     })
