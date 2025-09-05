@@ -25,14 +25,18 @@ export default function AdminDashboardClient() {
     const loadData = async () => {
       try {
         // 检查登录状态
-        const authResponse = await fetch('/api/admin/auth')
+        const authResponse = await fetch('/api/admin/auth', {
+          credentials: 'include'
+        })
         if (!authResponse.ok) {
           router.push('/admin')
           return
         }
 
         // 加载统计数据
-        const statsResponse = await fetch('/api/admin/albums')
+        const statsResponse = await fetch('/api/admin/albums', {
+          credentials: 'include'
+        })
         if (!statsResponse.ok) {
           throw new Error('Failed to load data')
         }
@@ -52,7 +56,7 @@ export default function AdminDashboardClient() {
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/admin/auth', { method: 'DELETE' })
+      await fetch('/api/admin/auth', { method: 'DELETE', credentials: 'include' })
       router.push('/admin')
     } catch (error) {
       console.error('Logout error:', error)
@@ -62,6 +66,7 @@ export default function AdminDashboardClient() {
   const handleUpdateAlbum = async (albumId: string, updates: Partial<Album>) => {
     try {
       const response = await fetch('/api/admin/albums', {
+        credentials: 'include',
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ albumId, updates })
@@ -72,7 +77,7 @@ export default function AdminDashboardClient() {
       }
 
       // 重新加载数据
-      const statsResponse = await fetch('/api/admin/albums')
+      const statsResponse = await fetch('/api/admin/albums', { credentials: 'include' })
       const data = await statsResponse.json()
       setStats(data)
       setEditingAlbum(null)
@@ -84,6 +89,7 @@ export default function AdminDashboardClient() {
   const handleUpdateCover = async (albumId: string, coverPhotoId: number) => {
     try {
       const response = await fetch('/api/admin/albums/cover', {
+        credentials: 'include',
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ albumId, coverPhotoId })
@@ -94,7 +100,7 @@ export default function AdminDashboardClient() {
       }
 
       // 重新加载数据
-      const statsResponse = await fetch('/api/admin/albums')
+      const statsResponse = await fetch('/api/admin/albums', { credentials: 'include' })
       const data = await statsResponse.json()
       setStats(data)
     } catch (error) {
@@ -109,6 +115,7 @@ export default function AdminDashboardClient() {
 
     try {
       const response = await fetch('/api/admin/albums', {
+        credentials: 'include',
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ albumId })
@@ -119,7 +126,7 @@ export default function AdminDashboardClient() {
       }
 
       // 重新加载数据
-      const statsResponse = await fetch('/api/admin/albums')
+      const statsResponse = await fetch('/api/admin/albums', { credentials: 'include' })
       const data = await statsResponse.json()
       setStats(data)
     } catch (error) {
@@ -130,6 +137,7 @@ export default function AdminDashboardClient() {
   const handleUpdatePhoto = async (albumId: string, photoId: number, updates: Partial<Photo>) => {
     try {
       const response = await fetch('/api/admin/photos', {
+        credentials: 'include',
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ albumId, photoId, updates })
@@ -140,7 +148,7 @@ export default function AdminDashboardClient() {
       }
 
       // 重新加载数据
-      const statsResponse = await fetch('/api/admin/albums')
+      const statsResponse = await fetch('/api/admin/albums', { credentials: 'include' })
       const data = await statsResponse.json()
       setStats(data)
       setEditingPhoto(null)
@@ -156,6 +164,7 @@ export default function AdminDashboardClient() {
 
     try {
       const response = await fetch('/api/admin/photos', {
+        credentials: 'include',
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ albumId, photoId })
@@ -166,7 +175,7 @@ export default function AdminDashboardClient() {
       }
 
       // 重新加载数据
-      const statsResponse = await fetch('/api/admin/albums')
+      const statsResponse = await fetch('/api/admin/albums', { credentials: 'include' })
       const data = await statsResponse.json()
       setStats(data)
     } catch (error) {

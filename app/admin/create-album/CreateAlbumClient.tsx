@@ -45,7 +45,9 @@ export default function CreateAlbumClient() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const response = await fetch('/api/admin/auth')
+        const response = await fetch('/api/admin/auth', {
+          credentials: 'include'
+        })
         if (response.ok) {
           const data = await response.json()
           if (data.authenticated) {
@@ -102,7 +104,8 @@ export default function CreateAlbumClient() {
 
       const response = await fetch('/api/admin/upload', {
         method: 'POST',
-        body: formDataToUpload
+        body: formDataToUpload,
+        credentials: 'include'
       })
 
       clearInterval(progressInterval)
@@ -176,7 +179,8 @@ export default function CreateAlbumClient() {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(albumData)
+        body: JSON.stringify(albumData),
+        credentials: 'include'
       })
 
       if (!response.ok) {

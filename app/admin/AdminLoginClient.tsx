@@ -17,7 +17,9 @@ export default function AdminLoginClient() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const response = await fetch('/api/admin/auth')
+        const response = await fetch('/api/admin/auth', {
+          credentials: 'include'
+        })
         if (response.ok) {
           const data = await response.json()
           if (data.authenticated) {
@@ -48,6 +50,7 @@ export default function AdminLoginClient() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ username, password }),
+        credentials: 'include'
       })
 
       const data = await response.json()
