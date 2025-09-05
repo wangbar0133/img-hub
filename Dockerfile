@@ -1,29 +1,52 @@
-# Node.js 服务器模式 Dockerfile
-FROM node:18-alpine
+# 多阶段构建优化 Dockerfile
+
+# 第一阶段：构建应用
+FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# 先复制package文件，利用Docker缓存
+# 复制package文件，利用Docker缓存
 COPY package*.json ./
 
-# 安装依赖 (包括开发依赖，构建需要TypeScript等)
+# 安装所有依赖（构建需要）
 RUN npm ci --ignore-scripts
 
 # 复制源代码
 COPY . .
 
-# 设置生产环境
+# 设置生产环境并构建
 ENV NODE_ENV=production
-
-# 构建应用 (服务器模式)
 RUN npm run build
 
-# 创建数据目录和日志目录
-RUN mkdir -p data/images logs public/images && \
-    chown -R node:node /app
+# 清理开发依赖，只保留生产依赖
+RUN npm prune --production && \
+    rm -rf .next/cache
 
-# 切换到非root用户
-USER node
+# 第二阶段：运行时镜像
+FROM node:18-alpine AS runner
+
+# 安装运行时工具
+RUN apk add --no-cache wget
+
+WORKDIR /app
+
+# 创建用户和目录
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs && \
+    mkdir -p data/images logs public/images
+
+# 从构建阶段复制必要文件
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+
+# 设置正确的权限
+RUN chown -R nextjs:nodejs /app
+USER nextjs
+
+# 设置环境变量
+ENV NODE_ENV=production
+ENV PORT=3000
 
 # 暴露端口
 EXPOSE 3000
@@ -32,5 +55,5 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
 
-# 启动Next.js服务器
-CMD ["npm", "start"]
+# 启动服务器
+CMD ["node", "server.js"]

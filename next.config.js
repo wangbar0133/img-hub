@@ -1,8 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // 服务器模式：支持API路由和服务端功能
-  // 注释掉静态导出以支持admin API功能
-  // ...(process.env.NODE_ENV === 'development' ? {} : { output: 'export' }),
+  // 启用standalone输出以减少Docker镜像大小
+  output: 'standalone',
   images: {
     unoptimized: true,
     // 支持外部图片域名
@@ -10,11 +10,8 @@ const nextConfig = {
     // 支持不同格式
     formats: ['image/webp', 'image/avif'],
   },
-  trailingSlash: true,
-  // 服务器模式不需要assetPrefix
-  // assetPrefix: process.env.NODE_ENV === 'production' ? '' : '',
-  // 使用默认构建目录
-  // distDir: 'out',
+  // 禁用 trailingSlash 以避免 admin 界面 301 重定向问题
+  trailingSlash: false,
   // 环境变量配置
   env: {
     ADMIN_USERNAME: process.env.ADMIN_USERNAME || 'admin',

@@ -85,9 +85,9 @@ docker-compose --env-file .env.production up -d
 # 3. 查看状态
 docker-compose ps
 
-# 4. 访问网站 (注意端口3000)
-# 主站: http://your-server-ip:3000/
-# 管理后台: http://your-server-ip:3000/admin
+# 4. 访问网站 (使用HTTP默认端口80)
+# 主站: http://your-server-ip/
+# 管理后台: http://your-server-ip/admin
 ```
 
 ## 🔐 管理后台
@@ -238,7 +238,7 @@ tar -xzf backup_20240101.tar.gz
 docker-compose logs img-hub | grep "ready"
 
 # 2. 检查API路由是否可访问
-curl http://localhost:3000/api/admin/auth
+curl http://localhost/api/admin/auth
 
 # 3. 检查环境变量
 docker exec img-hub-server env | grep ADMIN
@@ -248,8 +248,8 @@ docker exec img-hub-server env | grep ADMIN
 docker-compose restart
 
 # 5. 确认访问地址正确
-# 正确: http://server-ip:3000/admin
-# 错误: http://server-ip/admin (缺少端口)
+# 正确: http://server-ip/admin (使用HTTP默认端口80)
+# 错误: http://server-ip:3000/admin (旧配置端口)
 ```
 
 **图片无法显示**
@@ -265,7 +265,7 @@ docker inspect img-hub-server | grep Mounts
 **服务无法启动**
 ```bash
 # 查看端口占用
-netstat -tlnp | grep :3000
+netstat -tlnp | grep :80
 
 # 查看详细日志
 docker-compose logs img-hub
@@ -292,7 +292,7 @@ docker build -t img-hub-server .
 - **操作系统**: Ubuntu 20.04+ / CentOS 8+ / Debian 11+
 - **内存**: 最低 1GB，推荐 2GB+
 - **存储**: 最低 10GB，推荐 50GB+（用于图片存储）
-- **网络**: 公网IP，开放 3000/80/443 端口
+- **网络**: 公网IP，开放 80/443 端口
 
 ### 快速部署
 
@@ -319,7 +319,7 @@ docker-compose --env-file .env.production up -d
 
 # 5. 验证部署
 docker-compose ps
-curl http://localhost:3000/
+curl http://localhost/
 ```
 
 ### 安全配置
@@ -349,13 +349,11 @@ chmod 600 .env.production
 ```bash
 # Ubuntu/Debian
 sudo ufw allow 22/tcp    # SSH
-sudo ufw allow 3000/tcp  # App Server
-sudo ufw allow 80/tcp    # HTTP (optional, for reverse proxy)
-sudo ufw allow 443/tcp   # HTTPS (optional, for reverse proxy)
+sudo ufw allow 80/tcp    # HTTP
+sudo ufw allow 443/tcp   # HTTPS
 sudo ufw enable
 
 # CentOS/RHEL
-sudo firewall-cmd --permanent --add-port=3000/tcp
 sudo firewall-cmd --permanent --add-port=80/tcp
 sudo firewall-cmd --permanent --add-port=443/tcp
 sudo firewall-cmd --reload
