@@ -47,7 +47,7 @@
 - **图标系统**: Lucide React
 - **图片处理**: Sharp (Next.js API 处理)
 - **认证系统**: JWT + HTTP-only cookies
-- **部署方案**: Docker + Docker Compose + Nginx
+- **部署方案**: Docker + Docker Compose + Node.js Server
 
 ## 🚀 快速开始
 
@@ -85,9 +85,9 @@ docker-compose --env-file .env.production up -d
 # 3. 查看状态
 docker-compose ps
 
-# 4. 访问网站
-# 主站: http://your-server-ip/
-# 管理后台: http://your-server-ip/admin
+# 4. 访问网站 (注意端口3000)
+# 主站: http://your-server-ip:3000/
+# 管理后台: http://your-server-ip:3000/admin
 ```
 
 ## 🔐 管理后台
@@ -232,14 +232,24 @@ tar -xzf backup_20240101.tar.gz
 
 ### 常见问题
 
-**管理后台无法登录**
+**管理后台网络错误/无法登录**
 ```bash
-# 检查环境变量
-docker exec img-hub-app env | grep ADMIN
+# 1. 检查服务模式（确保使用服务器模式，非静态导出）
+docker-compose logs img-hub | grep "ready"
 
-# 重新生成凭据
+# 2. 检查API路由是否可访问
+curl http://localhost:3000/api/admin/auth
+
+# 3. 检查环境变量
+docker exec img-hub-server env | grep ADMIN
+
+# 4. 重新生成凭据
 ./generate-credentials.sh
 docker-compose restart
+
+# 5. 确认访问地址正确
+# 正确: http://server-ip:3000/admin
+# 错误: http://server-ip/admin (缺少端口)
 ```
 
 **图片无法显示**
@@ -249,16 +259,30 @@ ls -la data/images/
 chmod 755 data/images/
 
 # 检查容器挂载
-docker inspect img-hub-app | grep Mounts
+docker inspect img-hub-server | grep Mounts
 ```
 
 **服务无法启动**
 ```bash
 # 查看端口占用
-netstat -tlnp | grep :80
+netstat -tlnp | grep :3000
 
 # 查看详细日志
 docker-compose logs img-hub
+
+# 检查Docker镜像构建
+docker build -t img-hub-server .
+```
+
+**静态导出模式 vs 服务器模式**
+```bash
+# ⚠️ 静态模式（已弃用，不支持管理后台）
+# output: 'export' in next.config.js
+# 只支持静态页面，无API路由
+
+# ✅ 服务器模式（当前配置）
+# 支持完整的Next.js功能，包括API路由
+# 管理后台功能正常工作
 ```
 
 ## 🚀 生产环境部署
@@ -268,7 +292,7 @@ docker-compose logs img-hub
 - **操作系统**: Ubuntu 20.04+ / CentOS 8+ / Debian 11+
 - **内存**: 最低 1GB，推荐 2GB+
 - **存储**: 最低 10GB，推荐 50GB+（用于图片存储）
-- **网络**: 公网IP，开放 80/443 端口
+- **网络**: 公网IP，开放 3000/80/443 端口
 
 ### 快速部署
 
@@ -290,12 +314,12 @@ echo '[]' > data/albums.json
 # 3. 生成安全凭据
 ./generate-credentials.sh
 
-# 4. 启动服务
+# 4. 启动服务（服务器模式，支持API路由）
 docker-compose --env-file .env.production up -d
 
 # 5. 验证部署
 docker-compose ps
-curl http://localhost/health
+curl http://localhost:3000/
 ```
 
 ### 安全配置
@@ -325,11 +349,13 @@ chmod 600 .env.production
 ```bash
 # Ubuntu/Debian
 sudo ufw allow 22/tcp    # SSH
-sudo ufw allow 80/tcp    # HTTP
-sudo ufw allow 443/tcp   # HTTPS
+sudo ufw allow 3000/tcp  # App Server
+sudo ufw allow 80/tcp    # HTTP (optional, for reverse proxy)
+sudo ufw allow 443/tcp   # HTTPS (optional, for reverse proxy)
 sudo ufw enable
 
 # CentOS/RHEL
+sudo firewall-cmd --permanent --add-port=3000/tcp
 sudo firewall-cmd --permanent --add-port=80/tcp
 sudo firewall-cmd --permanent --add-port=443/tcp
 sudo firewall-cmd --reload

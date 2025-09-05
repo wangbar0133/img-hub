@@ -1,42 +1,36 @@
-# 多阶段构建 Dockerfile
-
-# 第一阶段：构建应用
-FROM node:18-alpine AS builder
+# Node.js 服务器模式 Dockerfile
+FROM node:18-alpine
 
 WORKDIR /app
 
 # 先复制package文件，利用Docker缓存
 COPY package*.json ./
 
-# 安装依赖
-RUN npm ci --only=production --ignore-scripts
+# 安装依赖 (包括开发依赖，构建需要TypeScript等)
+RUN npm ci --ignore-scripts
 
-# 复制源代码（排除大文件通过.dockerignore）
+# 复制源代码
 COPY . .
 
-# 构建应用
+# 设置生产环境
+ENV NODE_ENV=production
+
+# 构建应用 (服务器模式)
 RUN npm run build
 
-# 第二阶段：生产环境
-FROM nginx:alpine
+# 创建数据目录和日志目录
+RUN mkdir -p data/images logs public/images && \
+    chown -R node:node /app
 
-# 安装必要工具
-RUN apk add --no-cache curl
+# 切换到非root用户
+USER node
 
-# 复制自定义 nginx 配置
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# 从构建阶段复制静态文件
-COPY --from=builder /app/out /usr/share/nginx/html
-
-# 创建日志目录并设置权限
-RUN mkdir -p /var/log/nginx && \
-    chmod -R 755 /usr/share/nginx/html
+# 暴露端口
+EXPOSE 3000
 
 # 健康检查
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost/ || exit 1
+HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
 
-EXPOSE 80
-
-CMD ["nginx", "-g", "daemon off;"]
+# 启动Next.js服务器
+CMD ["npm", "start"]

@@ -1,7 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // 条件性配置：开发环境支持服务端功能，生产环境静态导出
-  ...(process.env.NODE_ENV === 'development' ? {} : { output: 'export' }),
+  // 服务器模式：支持API路由和服务端功能
+  // 注释掉静态导出以支持admin API功能
+  // ...(process.env.NODE_ENV === 'development' ? {} : { output: 'export' }),
   images: {
     unoptimized: true,
     // 支持外部图片域名
@@ -10,9 +11,10 @@ const nextConfig = {
     formats: ['image/webp', 'image/avif'],
   },
   trailingSlash: true,
-  // 修复assetPrefix问题 - 生产环境用相对路径，开发环境为空
-  assetPrefix: process.env.NODE_ENV === 'production' ? '' : '',
-  distDir: 'out',
+  // 服务器模式不需要assetPrefix
+  // assetPrefix: process.env.NODE_ENV === 'production' ? '' : '',
+  // 使用默认构建目录
+  // distDir: 'out',
   // 环境变量配置
   env: {
     ADMIN_USERNAME: process.env.ADMIN_USERNAME || 'admin',
