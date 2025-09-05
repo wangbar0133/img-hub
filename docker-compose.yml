@@ -7,11 +7,18 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
-    # volumes:
-      # 所有文件都已打包到镜像中，不需要挂载
+    volumes:
+      # 持久化数据目录
+      - ./data/albums.json:/usr/share/nginx/html/albums.json:rw
+      - ./data/images:/usr/share/nginx/html/images:rw
+      # Nginx 日志持久化
+      - ./logs:/var/log/nginx:rw
     
     environment:
       - NODE_ENV=production
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
+      - JWT_SECRET=${JWT_SECRET:-img-hub-admin-secret-key-2024}
     networks:
       - img-hub-network
     healthcheck:

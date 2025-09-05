@@ -40,19 +40,10 @@ Thumbs.db
 logs
 *.log
 
-# 保留public目录中的所有资源文件
-# 这些文件将被打包到镜像中
-# public/images/  # 现在需要打包图片
-# public/albums.json  # 现在需要打包数据文件
-
-# 但保留public目录下的其他静态资源（如果有的话）
-# public/*.ico
-# public/*.png
-# public/*.svg
-
 # ImgHub 特定文件
-.img-hub-workspace/
-scripts/img-manager.py
+data/
+logs/
+.env.production
 .env.deploy
 
 # 测试文件

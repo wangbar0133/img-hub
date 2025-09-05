@@ -20,6 +20,7 @@ export interface Album {
   title: string
   description: string
   coverImage: string
+  coverPhotoId?: number  // 指定哪张照片作为封面
   category: 'travel' | 'cosplay'
   photos: Photo[]
   createdAt: string
@@ -34,6 +35,7 @@ export interface AlbumPreview {
   title: string
   description: string
   coverImage: string
+  coverPhotoId?: number
   category: string
   photoCount: number
   featured: boolean

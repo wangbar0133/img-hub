@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import { Calendar, Image as ImageIcon } from 'lucide-react'
 import { Album } from '@/types'
 import Link from 'next/link'
+import { getAlbumCoverImage } from '@/lib/albumUtils'
 
 interface AlbumGridProps {
   albums: Album[]
@@ -149,7 +150,7 @@ export default function AlbumGrid({ albums, selectedCategory = 'all' }: AlbumGri
                       {/* 图片 */}
                       <img
                         data-album-id={album.id}
-                        src={album.coverImage}
+                        src={getAlbumCoverImage(album)}
                         alt={album.title}
                         ref={(img) => {
                           if (img && img.complete && img.naturalWidth > 0 && !loadedImages[album.id]) {
