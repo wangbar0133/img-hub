@@ -127,7 +127,7 @@ export default function AdminDashboardClient() {
     }
   }
 
-  const handleUpdatePhoto = async (albumId: string, photoId: string, updates: Partial<Photo>) => {
+  const handleUpdatePhoto = async (albumId: string, photoId: number, updates: Partial<Photo>) => {
     try {
       const response = await fetch('/api/admin/photos', {
         method: 'PUT',
@@ -149,7 +149,7 @@ export default function AdminDashboardClient() {
     }
   }
 
-  const handleDeletePhoto = async (albumId: string, photoId: string, photoTitle: string) => {
+  const handleDeletePhoto = async (albumId: string, photoId: number, photoTitle: string) => {
     if (!confirm(`确定要删除照片 "${photoTitle}" 吗？此操作不可撤销！`)) {
       return
     }
@@ -348,7 +348,7 @@ export default function AdminDashboardClient() {
                               onClick={() => handleUpdateCover(album.id, Number(photo.id))}
                             >
                               <Image
-                                src={photo.thumbnail}
+                                src={photo.thumbnail || photo.src}
                                 alt={photo.title}
                                 fill
                                 className="object-cover"
@@ -496,7 +496,7 @@ export default function AdminDashboardClient() {
                 <div className="text-center">
                   <div className="relative w-32 h-32 mx-auto rounded-lg overflow-hidden">
                     <Image
-                      src={editingPhoto.photo.thumbnail}
+                      src={editingPhoto.photo.thumbnail || editingPhoto.photo.src}
                       alt={editingPhoto.photo.title}
                       fill
                       className="object-cover"
@@ -536,7 +536,7 @@ export default function AdminDashboardClient() {
                   <input
                     type="text"
                     name="tags"
-                    defaultValue={editingPhoto.photo.tags.join(', ')}
+                    defaultValue={editingPhoto.photo.tags?.join(', ') || ''}
                     className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                     placeholder="风景, 人像, 街拍"
                   />

@@ -41,7 +41,9 @@ logs
 *.log
 
 # ImgHub 特定文件
-data/
+data/images/
+data/albums.json
+!data/*.ts
 logs/
 .env.production
 .env.deploy
