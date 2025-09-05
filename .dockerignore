@@ -43,6 +43,8 @@ logs
 # ImgHub 特定文件
 data/images/
 data/albums.json
+public/images/
+public/albums.json
 !data/*.ts
 logs/
 .env.production
