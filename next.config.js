@@ -12,11 +12,7 @@ const nextConfig = {
   },
   // 禁用 trailingSlash 以避免 admin 界面 301 重定向问题
   trailingSlash: false,
-  // 环境变量配置
-  env: {
-    ADMIN_USERNAME: process.env.ADMIN_USERNAME || 'admin',
-    ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || 'admin123',
-  },
+  // 移除 env 配置，让 API 路由在运行时读取环境变量
   // 实验性功能：支持服务器组件
   experimental: {
     serverComponentsExternalPackages: ['sharp']

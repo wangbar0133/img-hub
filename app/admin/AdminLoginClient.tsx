@@ -145,12 +145,6 @@ export default function AdminLoginClient() {
               {loading ? '登录中...' : '登录'}
             </button>
           </div>
-          
-          <div className="text-xs text-gray-500 text-center space-y-1">
-            <p>默认账号: admin</p>
-            <p>默认密码: admin123</p>
-            <p className="text-amber-600">⚠️ 生产环境请修改默认密码</p>
-          </div>
         </form>
       </div>
     </div>
