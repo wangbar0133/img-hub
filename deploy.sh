@@ -194,7 +194,16 @@ attempt=1
 while [ $attempt -le $max_attempts ]; do
     echo "  尝试 $attempt/$max_attempts..."
     
-    if curl -f -s -o /dev/null http://localhost:3000/; then
+    # 首先检查Nginx代理是否运行，优先使用代理端口
+    if $DOCKER_COMPOSE ps | grep -q "nginx.*Up"; then
+        HEALTH_URL="http://localhost:80/"
+    else
+        # 如果没有Nginx，直接检查应用端口
+        HEALTH_URL="http://localhost:3000/"
+    fi
+    
+    echo "  📍 检查URL: $HEALTH_URL"
+    if curl -f -s -o /dev/null "$HEALTH_URL"; then
         echo "✅ 服务健康检查通过"
         break
     fi
@@ -217,9 +226,20 @@ echo "📋 检查内存日志系统功能..."
 sleep 5
 
 echo "  🔍 测试管理员日志API访问..."
-if curl -f -s -o /dev/null "http://localhost:3000/admin/logs"; then
+
+# 确定正确的访问URL
+if $DOCKER_COMPOSE ps | grep -q "nginx.*Up"; then
+    LOGS_API_URL="http://localhost:80/admin/logs"
+    PUBLIC_LOGS_URL="http://localhost/admin/logs"
+else
+    LOGS_API_URL="http://localhost:3000/admin/logs"
+    PUBLIC_LOGS_URL="http://localhost:3000/admin/logs"
+fi
+
+echo "  📍 测试URL: $LOGS_API_URL"
+if curl -f -s -o /dev/null "$LOGS_API_URL"; then
     echo "✅ 日志API访问正常"
-    echo "  📊 可以通过 http://localhost:3000/admin/logs 查看应用日志"
+    echo "  📊 可以通过 $PUBLIC_LOGS_URL 查看应用日志"
 else
     echo "⚠️  日志API测试失败，检查容器日志:"
     $DOCKER_COMPOSE logs --tail=15
@@ -229,15 +249,32 @@ fi
 echo ""
 echo "🎉 部署完成!"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "📱 应用访问地址: http://localhost:3000"
-echo "🔧 管理界面: http://localhost:3000/admin"
-echo "📊 日志查看: http://localhost:3000/admin/logs"
+
+# 动态显示正确的访问URL
+if $DOCKER_COMPOSE ps | grep -q "nginx.*Up"; then
+    echo "📱 应用访问地址: http://localhost"
+    echo "🔧 管理界面: http://localhost/admin"
+    echo "📊 日志查看: http://localhost/admin/logs"
+    echo "🌐 通过Nginx代理运行 (端口80/443)"
+else
+    echo "📱 应用访问地址: http://localhost:3000"
+    echo "🔧 管理界面: http://localhost:3000/admin"
+    echo "📊 日志查看: http://localhost:3000/admin/logs"
+    echo "🔧 直连模式运行 (端口3000)"
+fi
+
 echo "💾 数据备份: $BACKUP_DIR"
 echo ""
 echo "📋 常用命令:"
 echo "  查看服务状态: $DOCKER_COMPOSE ps"
 echo "  查看容器日志: $DOCKER_COMPOSE logs -f img-hub"
-echo "  查看应用日志: 访问 http://localhost:3000/admin/logs"
+
+if $DOCKER_COMPOSE ps | grep -q "nginx.*Up"; then
+    echo "  查看应用日志: 访问 http://localhost/admin/logs"
+else
+    echo "  查看应用日志: 访问 http://localhost:3000/admin/logs"
+fi
+
 echo "  停止服务: $DOCKER_COMPOSE down"
 echo "  重启服务: $DOCKER_COMPOSE restart"
 echo ""
