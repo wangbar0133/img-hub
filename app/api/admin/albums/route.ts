@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { verify } from 'jsonwebtoken'
 import { AlbumModel } from '@/lib/models/album'
+import { addLog } from '../logs/route'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'img-hub-admin-secret-key-2024'
 
@@ -42,8 +43,10 @@ export async function GET(request: NextRequest) {
     })
     
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : '服务器错误'
+    addLog('error', 'Admin albums API error', { error: errorMessage, endpoint: 'GET /api/admin/albums' })
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : '服务器错误' },
+      { error: errorMessage },
       { status: 401 }
     )
   }

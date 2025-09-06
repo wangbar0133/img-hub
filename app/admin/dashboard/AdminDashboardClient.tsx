@@ -224,6 +224,12 @@ export default function AdminDashboardClient() {
                 创建新影集
               </button>
               <button
+                onClick={() => router.push('/admin/logs')}
+                className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700"
+              >
+                系统日志
+              </button>
+              <button
                 onClick={handleLogout}
                 className="bg-red-600 text-white px-4 py-2 rounded-md text-sm hover:bg-red-700"
               >
