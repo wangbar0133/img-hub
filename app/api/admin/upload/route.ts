@@ -9,7 +9,7 @@ import { existsSync } from 'fs'
 const JWT_SECRET = process.env.JWT_SECRET || 'img-hub-admin-secret-key-2024'
 
 // 验证管理员权限
-function verifyAdmin(request: NextRequest) {
+function verifyAdmin() {
   const cookieStore = cookies()
   const token = cookieStore.get('admin-token')?.value
   
@@ -24,7 +24,8 @@ function verifyAdmin(request: NextRequest) {
     }
     return decoded
   } catch (error) {
-    throw new Error('无效的登录状态')
+    console.error('JWT verification failed:', error)
+    throw new Error('无效的登录状态: ' + (error instanceof Error ? error.message : String(error)))
   }
 }
 
@@ -42,7 +43,7 @@ async function ensureDirectoryExists(dirPath: string) {
 
 export async function POST(request: NextRequest) {
   try {
-    verifyAdmin(request)
+    verifyAdmin()
     
     const formData = await request.formData()
     const files = formData.getAll('images') as File[]
@@ -151,7 +152,7 @@ export async function POST(request: NextRequest) {
 // 获取上传进度（可选实现）
 export async function GET(request: NextRequest) {
   try {
-    verifyAdmin(request)
+    verifyAdmin()
     
     // 可以返回当前正在处理的任务状态
     return NextResponse.json({
