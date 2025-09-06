@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams, notFound } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { Album, Photo } from '@/types'
 import PhotoDetailClient from './PhotoDetailClient'
 

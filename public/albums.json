@@ -3693,5 +3693,131 @@
         "tags": []
       }
     ]
+  },
+  {
+    "id": "fengjin",
+    "title": "风堇",
+    "description": "",
+    "coverImage": "/images/cosplay/cosplay_1757168900032.jpg",
+    "coverPhotoId": 1757168900032,
+    "category": "cosplay",
+    "featured": false,
+    "location": "",
+    "createdAt": "2025-09-06",
+    "photoCount": 8,
+    "photos": [
+      {
+        "id": 1757168900032,
+        "src": "/images/cosplay/cosplay_1757168900032.jpg",
+        "detailSrc": "/images/detail/cosplay_1757168900032.jpg",
+        "originalSrc": "/images/original/cosplay_1757168900032.jpg",
+        "thumbnail": "/images/thumbnails/cosplay/cosplay_1757168900032.jpg",
+        "alt": "_DSC9939",
+        "title": "_DSC9939",
+        "description": "",
+        "location": "",
+        "camera": "Unknown",
+        "settings": "Unknown",
+        "tags": []
+      },
+      {
+        "id": 1757168900397,
+        "src": "/images/cosplay/cosplay_1757168900397.jpg",
+        "detailSrc": "/images/detail/cosplay_1757168900397.jpg",
+        "originalSrc": "/images/original/cosplay_1757168900397.jpg",
+        "thumbnail": "/images/thumbnails/cosplay/cosplay_1757168900397.jpg",
+        "alt": "_DSC9940",
+        "title": "_DSC9940",
+        "description": "",
+        "location": "",
+        "camera": "Unknown",
+        "settings": "Unknown",
+        "tags": []
+      },
+      {
+        "id": 1757168900735,
+        "src": "/images/cosplay/cosplay_1757168900735.jpg",
+        "detailSrc": "/images/detail/cosplay_1757168900735.jpg",
+        "originalSrc": "/images/original/cosplay_1757168900735.jpg",
+        "thumbnail": "/images/thumbnails/cosplay/cosplay_1757168900735.jpg",
+        "alt": "_DSC9942",
+        "title": "_DSC9942",
+        "description": "",
+        "location": "",
+        "camera": "Unknown",
+        "settings": "Unknown",
+        "tags": []
+      },
+      {
+        "id": 1757168901074,
+        "src": "/images/cosplay/cosplay_1757168901074.jpg",
+        "detailSrc": "/images/detail/cosplay_1757168901074.jpg",
+        "originalSrc": "/images/original/cosplay_1757168901074.jpg",
+        "thumbnail": "/images/thumbnails/cosplay/cosplay_1757168901074.jpg",
+        "alt": "_DSC9943",
+        "title": "_DSC9943",
+        "description": "",
+        "location": "",
+        "camera": "Unknown",
+        "settings": "Unknown",
+        "tags": []
+      },
+      {
+        "id": 1757168901425,
+        "src": "/images/cosplay/cosplay_1757168901425.jpg",
+        "detailSrc": "/images/detail/cosplay_1757168901425.jpg",
+        "originalSrc": "/images/original/cosplay_1757168901425.jpg",
+        "thumbnail": "/images/thumbnails/cosplay/cosplay_1757168901425.jpg",
+        "alt": "_DSC9944",
+        "title": "_DSC9944",
+        "description": "",
+        "location": "",
+        "camera": "Unknown",
+        "settings": "Unknown",
+        "tags": []
+      },
+      {
+        "id": 1757168901765,
+        "src": "/images/cosplay/cosplay_1757168901765.jpg",
+        "detailSrc": "/images/detail/cosplay_1757168901765.jpg",
+        "originalSrc": "/images/original/cosplay_1757168901765.jpg",
+        "thumbnail": "/images/thumbnails/cosplay/cosplay_1757168901765.jpg",
+        "alt": "_DSC9945",
+        "title": "_DSC9945",
+        "description": "",
+        "location": "",
+        "camera": "Unknown",
+        "settings": "Unknown",
+        "tags": []
+      },
+      {
+        "id": 1757168902101,
+        "src": "/images/cosplay/cosplay_1757168902101.jpg",
+        "detailSrc": "/images/detail/cosplay_1757168902101.jpg",
+        "originalSrc": "/images/original/cosplay_1757168902101.jpg",
+        "thumbnail": "/images/thumbnails/cosplay/cosplay_1757168902101.jpg",
+        "alt": "_DSC9946",
+        "title": "_DSC9946",
+        "description": "",
+        "location": "",
+        "camera": "Unknown",
+        "settings": "Unknown",
+        "tags": []
+      },
+      {
+        "id": 1757168902433,
+        "src": "/images/cosplay/cosplay_1757168902433.jpg",
+        "detailSrc": "/images/detail/cosplay_1757168902433.jpg",
+        "originalSrc": "/images/original/cosplay_1757168902433.jpg",
+        "thumbnail": "/images/thumbnails/cosplay/cosplay_1757168902433.jpg",
+        "alt": "_DSC9947",
+        "title": "_DSC9947",
+        "description": "",
+        "location": "",
+        "camera": "Unknown",
+        "settings": "Unknown",
+        "tags": []
+      }
+    ]
   }
 ]
