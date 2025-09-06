@@ -6,7 +6,7 @@ import { AlbumModel } from '@/lib/models/album'
 const JWT_SECRET = process.env.JWT_SECRET || 'img-hub-admin-secret-key-2024'
 
 // 验证管理员权限的中间件
-function verifyAdmin(request: NextRequest) {
+function verifyAdmin() {
   const cookieStore = cookies()
   const token = cookieStore.get('admin-token')?.value
   
@@ -21,14 +21,16 @@ function verifyAdmin(request: NextRequest) {
     }
     return decoded
   } catch (error) {
-    throw new Error('无效的登录状态')
+    // JWT验证失败，保持原始错误信息用于调试
+    console.error('JWT verification failed:', error)
+    throw new Error('无效的登录状态: ' + (error instanceof Error ? error.message : String(error)))
   }
 }
 
 // GET - 获取所有影集（管理员视图）
 export async function GET(request: NextRequest) {
   try {
-    verifyAdmin(request)
+    verifyAdmin()
     
     const albums = await AlbumModel.getAllAlbums()
     
@@ -50,7 +52,7 @@ export async function GET(request: NextRequest) {
 // PUT - 更新影集信息
 export async function PUT(request: NextRequest) {
   try {
-    verifyAdmin(request)
+    verifyAdmin()
     
     const { albumId, updates } = await request.json()
     
@@ -89,7 +91,7 @@ export async function PUT(request: NextRequest) {
 // DELETE - 删除影集
 export async function DELETE(request: NextRequest) {
   try {
-    verifyAdmin(request)
+    verifyAdmin()
     
     const { albumId } = await request.json()
     
