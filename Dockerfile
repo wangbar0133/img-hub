@@ -5,11 +5,14 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
+# 安装构建工具和SQLite3编译所需的依赖
+RUN apk add --no-cache make gcc g++ python3 sqlite-dev
+
 # 复制package文件，利用Docker缓存
 COPY package*.json ./
 
-# 安装所有依赖（构建需要）
-RUN npm ci --ignore-scripts
+# 安装所有依赖（包括SQLite3原生模块编译）
+RUN npm ci
 
 # 复制源代码
 COPY . .
@@ -30,8 +33,8 @@ RUN npm prune --production && \
 # 第二阶段：运行时镜像
 FROM node:18-alpine AS runner
 
-# 安装运行时工具
-RUN apk add --no-cache wget
+# 安装运行时工具和SQLite
+RUN apk add --no-cache wget sqlite
 
 WORKDIR /app
 
@@ -44,6 +47,10 @@ RUN addgroup --system --gid 1001 nodejs && \
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
+# 复制SQLite相关的编译模块
+COPY --from=builder /app/node_modules/sqlite3 ./node_modules/sqlite3
+COPY --from=builder /app/node_modules/sqlite ./node_modules/sqlite
+COPY --from=builder /app/node_modules/bindings ./node_modules/bindings
 
 # 设置正确的权限
 RUN chown -R nextjs:nodejs /app
