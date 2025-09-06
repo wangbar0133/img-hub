@@ -6,7 +6,7 @@ import { AlbumModel } from '@/lib/models/album'
 const JWT_SECRET = process.env.JWT_SECRET || 'img-hub-admin-secret-key-2024'
 
 // 验证管理员权限
-function verifyAdmin(request: NextRequest) {
+function verifyAdmin() {
   const cookieStore = cookies()
   const token = cookieStore.get('admin-token')?.value
   
@@ -21,14 +21,15 @@ function verifyAdmin(request: NextRequest) {
     }
     return decoded
   } catch (error) {
-    throw new Error('无效的登录状态')
+    console.error('JWT verification failed:', error)
+    throw new Error('无效的登录状态: ' + (error instanceof Error ? error.message : String(error)))
   }
 }
 
 // PUT - 更新影集封面
 export async function PUT(request: NextRequest) {
   try {
-    verifyAdmin(request)
+    verifyAdmin()
     
     const { albumId, coverPhotoId } = await request.json()
     
