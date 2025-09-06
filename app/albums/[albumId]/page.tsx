@@ -3,8 +3,12 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { Album } from '@/types'
-import { getAlbumById } from '@/data/albums'
 import AlbumDetailClient from './AlbumDetailClient'
+
+// 客户端版本的 getAlbumById 函数
+function getAlbumById(albums: Album[], id: string): Album | undefined {
+  return albums.find(album => album.id === id)
+}
 
 export default function AlbumDetailPage() {
   const params = useParams()

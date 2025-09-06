@@ -14,6 +14,11 @@ RUN npm ci --ignore-scripts
 # 复制源代码
 COPY . .
 
+# 创建构建时需要的占位文件（如果不存在的话）
+RUN if [ ! -f public/albums.json ]; then \
+    echo '[]' > public/albums.json; \
+    fi
+
 # 设置生产环境并构建
 ENV NODE_ENV=production
 RUN npm run build
