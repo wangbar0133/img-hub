@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: img-hub:latest  # 构建时打标签
+    image: wangbar01334/img-hub:latest  # 构建时打标签
     container_name: img-hub-server-build
     restart: unless-stopped
     volumes:

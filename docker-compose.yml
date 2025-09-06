@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   img-hub:
-    image: img-hub:latest  # 使用预构建的镜像
+    image: wangbar01334/img-hub:latest  # 使用Docker Hub镜像
     container_name: img-hub-server
     restart: unless-stopped
     volumes:
