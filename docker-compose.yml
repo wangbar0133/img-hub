@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   img-hub:
-    image: wangbar01334/img-hub:latest  # 使用Docker Hub镜像
+    build: .  # 使用本地构建而不是Docker Hub镜像
     container_name: img-hub-server
     restart: unless-stopped
     volumes:
@@ -22,7 +22,7 @@ services:
     networks:
       - img-hub-network
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      test: ["CMD", "sh", "-c", "wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3

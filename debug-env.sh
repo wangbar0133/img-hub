@@ -63,7 +63,25 @@ else
     $DC logs --tail=20 img-hub
 fi
 
-echo -e "\n8. 进入容器调试（可选）..."
+echo -e "\n8. 健康检查诊断..."
+echo "容器健康状态："
+docker ps --format "table {{.Names}}\t{{.Status}}" | grep img-hub
+
+echo -e "\n手动测试健康检查端点："
+if $DC exec img-hub wget --no-verbose --tries=1 --spider http://localhost:3000/ 2>/dev/null; then
+    echo "✅ 容器内健康检查成功"
+else
+    echo "❌ 容器内健康检查失败"
+fi
+
+echo -e "\n测试外部访问："
+if curl -s -f http://localhost:3000/ >/dev/null 2>&1; then
+    echo "✅ 外部访问成功"
+else
+    echo "❌ 外部访问失败"
+fi
+
+echo -e "\n9. 进入容器调试（可选）..."
 read -p "是否进入容器进行手动调试？(y/n): " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
