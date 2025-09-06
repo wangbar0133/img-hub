@@ -1,68 +1,74 @@
 #!/bin/bash
 
-echo "🔍 环境变量调试脚本"
-echo "==================="
+# 调试和修复环境问题的脚本
 
-# 1. 检查当前目录
-echo "📂 当前目录: $(pwd)"
-echo
+echo "🔍 Docker 环境调试工具"
+echo "========================"
 
-# 2. 检查 .env.production 文件
-echo "📄 检查 .env.production 文件:"
-if [ -f ".env.production" ]; then
-    echo "✅ .env.production 文件存在"
-    echo "📋 文件内容:"
-    cat .env.production
-    echo
+# 检查Docker Compose命令
+if command -v docker compose &> /dev/null; then
+    DC="docker compose"
 else
-    echo "❌ .env.production 文件不存在"
-    echo "📝 请创建该文件并设置环境变量"
-    echo
+    DC="docker-compose"
 fi
 
-# 3. 检查Docker容器状态
-echo "🐳 Docker 容器状态:"
-docker-compose ps
-echo
+echo "1. 检查容器状态..."
+$DC ps
 
-# 4. 检查容器中的环境变量
-echo "🔧 容器中的环境变量:"
-if docker ps -q -f name=img-hub-server | grep -q .; then
-    echo "ADMIN_USERNAME: $(docker exec img-hub-server printenv ADMIN_USERNAME 2>/dev/null || echo 'Not set')"
-    echo "ADMIN_PASSWORD: $(docker exec img-hub-server printenv ADMIN_PASSWORD 2>/dev/null || echo 'Not set')"
-    echo "JWT_SECRET: $(docker exec img-hub-server printenv JWT_SECRET 2>/dev/null || echo 'Not set')"
-    echo "NODE_ENV: $(docker exec img-hub-server printenv NODE_ENV 2>/dev/null || echo 'Not set')"
-    echo "FORCE_HTTPS: $(docker exec img-hub-server printenv FORCE_HTTPS 2>/dev/null || echo 'Not set')"
+echo -e "\n2. 检查容器内权限..."
+if $DC exec img-hub ls -la /app/logs/ 2>/dev/null; then
+    echo "✅ 容器内日志目录权限："
+    $DC exec img-hub ls -la /app/logs/
 else
-    echo "❌ img-hub-server 容器未运行"
+    echo "❌ 无法访问容器内日志目录"
 fi
-echo
 
-# 5. 测试API端点
-echo "🧪 测试 API 端点:"
-if command -v curl >/dev/null 2>&1; then
-    echo "测试默认凭据 (admin/admin123):"
-    curl -s -X POST http://localhost/api/admin/auth/ \
-      -H "Content-Type: application/json" \
-      -d '{"username":"admin","password":"admin123"}' | head -1
-    
-    echo "测试自定义凭据:"
-    if [ -f ".env.production" ]; then
-        PASSWORD=$(grep ADMIN_PASSWORD .env.production | cut -d'=' -f2)
-        if [ ! -z "$PASSWORD" ]; then
-            curl -s -X POST http://localhost/api/admin/auth/ \
-              -H "Content-Type: application/json" \
-              -d "{\"username\":\"admin\",\"password\":\"$PASSWORD\"}" | head -1
-        fi
-    fi
+echo -e "\n3. 检查本地目录权限..."
+echo "本地日志目录权限："
+ls -la logs/ || echo "❌ 本地logs目录不存在"
+
+echo -e "\n4. 检查Docker卷挂载..."
+echo "Docker卷信息："
+docker volume ls | grep logs || echo "❌ 未找到logs卷"
+
+echo -e "\n5. 修复权限问题..."
+echo "创建本地logs目录（如果不存在）..."
+mkdir -p logs
+
+echo "设置本地logs目录权限..."
+chmod 777 logs  # 临时设置为全写权限
+touch logs/server.log
+chmod 666 logs/server.log
+
+echo -e "\n6. 重启容器测试..."
+echo "停止容器..."
+$DC down
+
+echo "重新启动容器..."
+$DC up -d
+
+echo "等待服务启动..."
+sleep 10
+
+echo -e "\n7. 验证日志文件..."
+if [ -f "logs/server.log" ]; then
+    echo "✅ server.log 文件已创建"
+    echo "文件权限："
+    ls -la logs/server.log
+    echo -e "\n最新日志内容："
+    tail -5 logs/server.log
 else
-    echo "❌ curl 未安装，无法测试 API"
+    echo "❌ server.log 文件仍未创建"
+    echo "容器日志："
+    $DC logs --tail=20 img-hub
 fi
-echo
 
-# 6. 提供解决建议
-echo "💡 解决建议:"
-echo "1. 确保 .env.production 文件存在并包含正确的变量"
-echo "2. 使用正确的命令部署: docker-compose --env-file .env.production up -d"
-echo "3. 如果修改了环境变量，需要重新创建容器: docker-compose up -d --force-recreate"
-echo "4. 检查容器日志: docker-compose logs img-hub"
+echo -e "\n8. 进入容器调试（可选）..."
+read -p "是否进入容器进行手动调试？(y/n): " -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    echo "进入容器 shell..."
+    $DC exec img-hub sh
+fi
+
+echo -e "\n调试完成！"

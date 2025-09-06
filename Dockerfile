@@ -65,8 +65,11 @@ COPY --from=builder /app/node_modules/sqlite ./node_modules/sqlite
 COPY --from=builder /app/node_modules/bindings ./node_modules/bindings
 COPY --from=builder /app/node_modules/sharp ./node_modules/sharp
 
-# 设置正确的权限
-RUN chown -R nextjs:nodejs /app
+# 设置正确的权限，并预创建日志文件
+RUN chown -R nextjs:nodejs /app && \
+    touch /app/logs/server.log && \
+    chown nextjs:nodejs /app/logs/server.log && \
+    chmod 664 /app/logs/server.log
 USER nextjs
 
 # 设置环境变量
