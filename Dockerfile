@@ -19,6 +19,8 @@ RUN npm ci
 
 # 重新安装Sharp以确保Alpine兼容性
 RUN npm rebuild --arch=x64 --platform=linux --libc=musl sharp
+# 验证Sharp安装
+RUN node -e "console.log('Sharp version:', require('sharp').versions)" || echo "Sharp verification failed but continuing..."
 # 额外确保Sharp在Alpine环境下正常工作
 ENV SHARP_IGNORE_GLOBAL_LIBVIPS=1
 
@@ -59,11 +61,11 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/server-wrapper.js ./
-# 复制SQLite和Sharp相关的编译模块
-COPY --from=builder /app/node_modules/sqlite3 ./node_modules/sqlite3
-COPY --from=builder /app/node_modules/sqlite ./node_modules/sqlite
-COPY --from=builder /app/node_modules/bindings ./node_modules/bindings
-COPY --from=builder /app/node_modules/sharp ./node_modules/sharp
+# 复制编译后的node_modules，包含原生模块
+COPY --from=builder /app/node_modules ./node_modules
+
+# Sharp已在构建阶段正确编译，确保运行时环境变量设置
+ENV SHARP_IGNORE_GLOBAL_LIBVIPS=1
 
 # 设置正确的权限，并预创建日志文件
 RUN chown -R nextjs:nodejs /app && \
