@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { verify } from 'jsonwebtoken'
-import { readFileSync, writeFileSync } from 'fs'
-import { join } from 'path'
+import { AlbumModel } from '@/lib/models/album'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'img-hub-admin-secret-key-2024'
-const ALBUMS_JSON_PATH = join(process.cwd(), 'public', 'albums.json')
 
 // 验证管理员权限的中间件
 function verifyAdmin(request: NextRequest) {
@@ -27,27 +25,12 @@ function verifyAdmin(request: NextRequest) {
   }
 }
 
-// 读取影集数据
-function loadAlbums() {
-  try {
-    const data = readFileSync(ALBUMS_JSON_PATH, 'utf-8')
-    return JSON.parse(data)
-  } catch (error) {
-    return []
-  }
-}
-
-// 保存影集数据
-function saveAlbums(albums: any[]) {
-  writeFileSync(ALBUMS_JSON_PATH, JSON.stringify(albums, null, 2), 'utf-8')
-}
-
 // GET - 获取所有影集（管理员视图）
 export async function GET(request: NextRequest) {
   try {
     verifyAdmin(request)
     
-    const albums = loadAlbums()
+    const albums = await AlbumModel.getAllAlbums()
     
     return NextResponse.json({
       success: true,
@@ -78,32 +61,21 @@ export async function PUT(request: NextRequest) {
       )
     }
     
-    const albums = loadAlbums()
-    const albumIndex = albums.findIndex((album: any) => album.id === albumId)
+    const success = await AlbumModel.updateAlbum(albumId, updates)
     
-    if (albumIndex === -1) {
+    if (!success) {
       return NextResponse.json(
-        { error: '影集不存在' },
+        { error: '影集不存在或更新失败' },
         { status: 404 }
       )
     }
     
-    // 更新影集信息
-    albums[albumIndex] = {
-      ...albums[albumIndex],
-      ...updates,
-      // 防止修改某些关键字段
-      id: albums[albumIndex].id,
-      photos: albums[albumIndex].photos,
-      photoCount: albums[albumIndex].photoCount
-    }
-    
-    saveAlbums(albums)
+    const updatedAlbum = await AlbumModel.getAlbumById(albumId)
     
     return NextResponse.json({
       success: true,
       message: '影集更新成功',
-      album: albums[albumIndex]
+      album: updatedAlbum
     })
     
   } catch (error) {
@@ -128,24 +100,29 @@ export async function DELETE(request: NextRequest) {
       )
     }
     
-    const albums = loadAlbums()
-    const albumIndex = albums.findIndex((album: any) => album.id === albumId)
+    // 先获取影集信息用于返回
+    const album = await AlbumModel.getAlbumById(albumId)
     
-    if (albumIndex === -1) {
+    if (!album) {
       return NextResponse.json(
         { error: '影集不存在' },
         { status: 404 }
       )
     }
     
-    // 删除影集
-    const deletedAlbum = albums.splice(albumIndex, 1)[0]
-    saveAlbums(albums)
+    const success = await AlbumModel.deleteAlbum(albumId)
+    
+    if (!success) {
+      return NextResponse.json(
+        { error: '删除失败' },
+        { status: 500 }
+      )
+    }
     
     return NextResponse.json({
       success: true,
-      message: `影集 "${deletedAlbum.title}" 删除成功`,
-      deletedAlbum
+      message: `影集 "${album.title}" 删除成功`,
+      deletedAlbum: album
     })
     
   } catch (error) {

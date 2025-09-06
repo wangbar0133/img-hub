@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { verify } from 'jsonwebtoken'
-import { readFileSync, writeFileSync } from 'fs'
-import { join } from 'path'
+import { AlbumModel } from '@/lib/models/album'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'img-hub-admin-secret-key-2024'
-const ALBUMS_JSON_PATH = join(process.cwd(), 'public', 'albums.json')
 
 // 验证管理员权限
 function verifyAdmin(request: NextRequest) {
@@ -25,21 +23,6 @@ function verifyAdmin(request: NextRequest) {
   } catch (error) {
     throw new Error('无效的登录状态')
   }
-}
-
-// 读取影集数据
-function loadAlbums() {
-  try {
-    const data = readFileSync(ALBUMS_JSON_PATH, 'utf-8')
-    return JSON.parse(data)
-  } catch (error) {
-    return []
-  }
-}
-
-// 保存影集数据
-function saveAlbums(albums: any[]) {
-  writeFileSync(ALBUMS_JSON_PATH, JSON.stringify(albums, null, 2), 'utf-8')
 }
 
 // PUT - 更新影集封面
@@ -63,44 +46,26 @@ export async function PUT(request: NextRequest) {
       )
     }
     
-    const albums = loadAlbums()
-    const albumIndex = albums.findIndex((album: any) => album.id === albumId)
+    const success = await AlbumModel.updateCover(albumId, coverPhotoId)
     
-    if (albumIndex === -1) {
+    if (!success) {
       return NextResponse.json(
-        { error: '影集不存在' },
+        { error: '影集不存在或指定的照片不存在于此影集中' },
         { status: 404 }
       )
     }
     
-    const album = albums[albumIndex]
-    
-    // 查找指定的照片
-    const coverPhoto = album.photos.find((photo: any) => photo.id === coverPhotoId)
-    
-    if (!coverPhoto) {
-      return NextResponse.json(
-        { error: '指定的照片不存在于此影集中' },
-        { status: 404 }
-      )
-    }
-    
-    // 更新封面信息
-    album.coverPhotoId = coverPhotoId
-    album.coverImage = coverPhoto.src
-    
-    albums[albumIndex] = album
-    saveAlbums(albums)
+    const updatedAlbum = await AlbumModel.getAlbumById(albumId)
     
     return NextResponse.json({
       success: true,
       message: '封面更新成功',
-      album: {
-        id: album.id,
-        title: album.title,
-        coverImage: album.coverImage,
-        coverPhotoId: album.coverPhotoId
-      }
+      album: updatedAlbum ? {
+        id: updatedAlbum.id,
+        title: updatedAlbum.title,
+        coverImage: updatedAlbum.coverImage,
+        coverPhotoId: updatedAlbum.coverPhotoId
+      } : null
     })
     
   } catch (error) {

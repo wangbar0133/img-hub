@@ -7,10 +7,12 @@
     "build": "next build",
     "start": "next start",
     "export": "next export",
-    "lint": "next lint"
+    "lint": "next lint",
+    "migrate": "tsx scripts/migrate-to-database.ts"
   },
   "dependencies": {
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/sqlite3": "^3.1.11",
     "exif-js": "^2.3.0",
     "formidable": "^3.5.4",
     "framer-motion": "^10.16.0",
@@ -20,7 +22,9 @@
     "next": "14.0.0",
     "react": "^18",
     "react-dom": "^18",
-    "sharp": "^0.34.3"
+    "sharp": "^0.34.3",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7"
   },
   "devDependencies": {
     "@types/node": "^20",
@@ -31,6 +35,7 @@
     "eslint-config-next": "14.0.0",
     "postcss": "^8",
     "tailwindcss": "^3.3.0",
+    "tsx": "^4.20.5",
     "typescript": "^5"
   }
 }
