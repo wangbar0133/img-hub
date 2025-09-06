@@ -1,6 +1,7 @@
 import sqlite3 from 'sqlite3'
 import { open, Database } from 'sqlite'
 import path from 'path'
+import fs from 'fs'
 
 let db: Database<sqlite3.Database, sqlite3.Statement> | null = null
 
@@ -10,12 +11,26 @@ export async function getDatabase() {
       ? '/app/data/database.db' 
       : path.join(process.cwd(), 'data', 'database.db')
     
-    db = await open({
-      filename: dbPath,
-      driver: sqlite3.Database
-    })
+    // 确保数据目录存在
+    const dbDir = path.dirname(dbPath)
+    if (!fs.existsSync(dbDir)) {
+      fs.mkdirSync(dbDir, { recursive: true })
+    }
     
-    await initializeTables()
+    try {
+      db = await open({
+        filename: dbPath,
+        driver: sqlite3.Database
+      })
+      
+      await initializeTables()
+    } catch (error) {
+      console.error('Database connection failed:', error)
+      console.error('Database path:', dbPath)
+      console.error('Directory exists:', fs.existsSync(dbDir))
+      console.error('Directory permissions:', fs.statSync(dbDir))
+      throw error
+    }
   }
   
   return db
