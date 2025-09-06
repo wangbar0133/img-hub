@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { verify } from 'jsonwebtoken'
 import { PhotoModel } from '@/lib/models/photo'
 import { AlbumModel } from '@/lib/models/album'
+import { addLog } from '../logs/route'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'img-hub-admin-secret-key-2024'
 
@@ -30,11 +31,16 @@ function verifyAdmin() {
 // PUT - 更新照片信息
 export async function PUT(request: NextRequest) {
   try {
+    addLog('info', 'PUT photo update request started')
+    
     verifyAdmin()
     
     const { photoId, updates } = await request.json()
     
+    addLog('info', `Updating photo: ${photoId}`, { updates: Object.keys(updates) })
+    
     if (!photoId) {
+      addLog('warn', 'Photo update failed: Missing photo ID')
       return NextResponse.json(
         { error: '缺少照片ID' },
         { status: 400 }
@@ -47,6 +53,7 @@ export async function PUT(request: NextRequest) {
     const success = await PhotoModel.updatePhoto(Number(photoId), allowedUpdates)
     
     if (!success) {
+      addLog('warn', `Photo update failed: Photo not found or update failed for ID ${photoId}`)
       return NextResponse.json(
         { error: '照片不存在或更新失败' },
         { status: 404 }
@@ -55,6 +62,8 @@ export async function PUT(request: NextRequest) {
     
     const updatedPhoto = await PhotoModel.getPhotoById(Number(photoId))
     
+    addLog('info', `Photo updated successfully: ${photoId}`, { photoTitle: updatedPhoto?.title })
+    
     return NextResponse.json({
       success: true,
       message: '照片信息更新成功',
@@ -62,6 +71,7 @@ export async function PUT(request: NextRequest) {
     })
     
   } catch (error) {
+    addLog('error', 'Photo update failed', { error: error instanceof Error ? error.message : String(error) })
     console.error('更新照片错误:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : '服务器错误' },
@@ -73,11 +83,16 @@ export async function PUT(request: NextRequest) {
 // DELETE - 删除照片
 export async function DELETE(request: NextRequest) {
   try {
+    addLog('info', 'DELETE photo request started')
+    
     verifyAdmin()
     
     const { photoId } = await request.json()
     
+    addLog('info', `Deleting photo: ${photoId}`)
+    
     if (!photoId) {
+      addLog('warn', 'Photo deletion failed: Missing photo ID')
       return NextResponse.json(
         { error: '缺少照片ID' },
         { status: 400 }
@@ -87,16 +102,20 @@ export async function DELETE(request: NextRequest) {
     // 先获取照片信息
     const photo = await PhotoModel.getPhotoById(Number(photoId))
     if (!photo) {
+      addLog('warn', `Photo deletion failed: Photo not found for ID ${photoId}`)
       return NextResponse.json(
         { error: '照片不存在' },
         { status: 404 }
       )
     }
     
+    addLog('info', `Deleting photo "${photo.title}" (ID: ${photoId})`)
+    
     // 删除照片（这会自动更新相册的photo count）
     const albumId = await PhotoModel.deletePhoto(Number(photoId))
     
     if (!albumId) {
+      addLog('error', `Photo deletion failed: Database operation failed for ID ${photoId}`)
       return NextResponse.json(
         { error: '删除失败' },
         { status: 500 }
@@ -105,6 +124,11 @@ export async function DELETE(request: NextRequest) {
     
     // 获取更新后的相册信息
     const updatedAlbum = await AlbumModel.getAlbumById(albumId)
+    
+    addLog('info', `Photo deleted successfully: "${photo.title}" (${photoId})`, {
+      deletedPhoto: { id: photoId, title: photo.title },
+      updatedAlbum: { id: albumId, photoCount: updatedAlbum?.photoCount }
+    })
     
     return NextResponse.json({
       success: true,
@@ -118,6 +142,7 @@ export async function DELETE(request: NextRequest) {
     })
     
   } catch (error) {
+    addLog('error', 'Photo deletion failed', { error: error instanceof Error ? error.message : String(error) })
     console.error('删除照片错误:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : '服务器错误' },

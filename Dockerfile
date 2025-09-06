@@ -5,14 +5,22 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# 安装构建工具和SQLite3编译所需的依赖
-RUN apk add --no-cache make gcc g++ python3 sqlite-dev
+# 安装构建工具、SQLite3、Sharp和图片处理所需的依赖
+RUN apk add --no-cache \
+    make gcc g++ python3 sqlite-dev \
+    vips-dev libc6-compat \
+    pkgconfig
 
 # 复制package文件，利用Docker缓存
 COPY package*.json ./
 
-# 安装所有依赖（包括SQLite3原生模块编译）
+# 安装所有依赖（包括SQLite3和Sharp原生模块编译）
 RUN npm ci
+
+# 重新安装Sharp以确保Alpine兼容性
+RUN npm rebuild --arch=x64 --platform=linux --libc=musl sharp
+# 额外确保Sharp在Alpine环境下正常工作
+ENV SHARP_IGNORE_GLOBAL_LIBVIPS=1
 
 # 复制源代码
 COPY . .
@@ -33,8 +41,11 @@ RUN npm prune --production && \
 # 第二阶段：运行时镜像
 FROM node:18-alpine AS runner
 
-# 安装运行时工具和SQLite
-RUN apk add --no-cache wget sqlite
+# 安装运行时工具、SQLite和Sharp所需的库
+RUN apk add --no-cache \
+    wget sqlite \
+    vips \
+    libc6-compat
 
 WORKDIR /app
 
@@ -47,10 +58,12 @@ RUN addgroup --system --gid 1001 nodejs && \
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
-# 复制SQLite相关的编译模块
+COPY --from=builder /app/server-wrapper.js ./
+# 复制SQLite和Sharp相关的编译模块
 COPY --from=builder /app/node_modules/sqlite3 ./node_modules/sqlite3
 COPY --from=builder /app/node_modules/sqlite ./node_modules/sqlite
 COPY --from=builder /app/node_modules/bindings ./node_modules/bindings
+COPY --from=builder /app/node_modules/sharp ./node_modules/sharp
 
 # 设置正确的权限
 RUN chown -R nextjs:nodejs /app
@@ -59,6 +72,7 @@ USER nextjs
 # 设置环境变量
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV SHARP_IGNORE_GLOBAL_LIBVIPS=1
 
 # 暴露端口
 EXPOSE 3000
@@ -67,5 +81,5 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
 
-# 启动服务器
-CMD ["node", "server.js"]
+# 启动服务器并将输出重定向到日志文件
+CMD ["sh", "-c", "node server.js 2>&1 | tee /app/logs/server.log"]
