@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { verify } from 'jsonwebtoken'
-import { readFileSync, writeFileSync } from 'fs'
-import { join } from 'path'
+import { AlbumModel } from '@/lib/models/album'
+import { PhotoModel } from '@/lib/models/photo'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'img-hub-admin-secret-key-2024'
-const ALBUMS_JSON_PATH = join(process.cwd(), 'public', 'albums.json')
 
 // 验证管理员权限
-function verifyAdmin(request: NextRequest) {
+function verifyAdmin() {
   const cookieStore = cookies()
   const token = cookieStore.get('admin-token')?.value
   
@@ -23,28 +22,14 @@ function verifyAdmin(request: NextRequest) {
     }
     return decoded
   } catch (error) {
-    throw new Error('无效的登录状态')
+    console.error('JWT verification failed:', error)
+    throw new Error('无效的登录状态: ' + (error instanceof Error ? error.message : String(error)))
   }
-}
-
-// 读取影集数据
-function loadAlbums() {
-  try {
-    const data = readFileSync(ALBUMS_JSON_PATH, 'utf-8')
-    return JSON.parse(data)
-  } catch (error) {
-    return []
-  }
-}
-
-// 保存影集数据
-function saveAlbums(albums: any[]) {
-  writeFileSync(ALBUMS_JSON_PATH, JSON.stringify(albums, null, 2), 'utf-8')
 }
 
 export async function POST(request: NextRequest) {
   try {
-    verifyAdmin(request)
+    verifyAdmin()
     
     const albumData = await request.json()
     
@@ -71,18 +56,17 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    const albums = loadAlbums()
-    
     // 检查ID是否已存在
-    if (albums.some((album: any) => album.id === albumData.id)) {
+    const existingAlbum = await AlbumModel.getAlbumById(albumData.id)
+    if (existingAlbum) {
       return NextResponse.json(
         { error: `影集ID "${albumData.id}" 已存在` },
         { status: 409 }
       )
     }
     
-    // 构建完整的影集数据
-    const newAlbum = {
+    // 构建影集数据
+    const albumInfo = {
       id: albumData.id,
       title: albumData.title,
       description: albumData.description || '',
@@ -91,26 +75,28 @@ export async function POST(request: NextRequest) {
       category: albumData.category,
       featured: Boolean(albumData.featured),
       location: albumData.location || '',
-      createdAt: albumData.createdAt || new Date().toISOString().split('T')[0],
-      photoCount: albumData.photos.length,
-      photos: albumData.photos
+      createdAt: albumData.createdAt || new Date().toISOString().split('T')[0]
     }
     
-    // 添加到影集列表
-    albums.push(newAlbum)
+    // 创建影集
+    await AlbumModel.createAlbum(albumInfo)
     
-    // 保存到文件
-    saveAlbums(albums)
+    // 添加照片到数据库
+    const photoIds = await PhotoModel.addPhotos(albumData.id, albumData.photos)
+    
+    // 获取创建的完整影集数据
+    const createdAlbum = await AlbumModel.getAlbumById(albumData.id)
     
     return NextResponse.json({
       success: true,
-      message: `影集 "${newAlbum.title}" 创建成功`,
+      message: `影集 "${albumInfo.title}" 创建成功`,
       album: {
-        id: newAlbum.id,
-        title: newAlbum.title,
-        photoCount: newAlbum.photoCount,
-        category: newAlbum.category
-      }
+        id: createdAlbum!.id,
+        title: createdAlbum!.title,
+        photoCount: createdAlbum!.photoCount,
+        category: createdAlbum!.category
+      },
+      photoIds
     })
     
   } catch (error) {
