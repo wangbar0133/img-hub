@@ -18,7 +18,7 @@ services:
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
       - JWT_SECRET=${JWT_SECRET:-img-hub-admin-secret-key-2024}
       - PORT=3000
-      - FORCE_HTTPS=${FORCE_HTTPS:-false}
+      - FORCE_HTTPS=${FORCE_HTTPS:-true}
     networks:
       - img-hub-network
     healthcheck:
