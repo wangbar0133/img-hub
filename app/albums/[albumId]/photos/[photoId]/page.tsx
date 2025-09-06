@@ -1,59 +1,91 @@
-import { notFound } from 'next/navigation'
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useParams, notFound } from 'next/navigation'
 import { Album, Photo } from '@/types'
-import { getAlbumById, loadAlbumsFromFile } from '@/data/albums'
 import PhotoDetailClient from './PhotoDetailClient'
 
-// 静态导出时需要的函数
-export async function generateStaticParams() {
-  const albums = loadAlbumsFromFile()
-  const params: { albumId: string; photoId: string }[] = []
-  
-  albums.forEach((album) => {
-    album.photos.forEach((photo) => {
-      params.push({
-        albumId: album.id,
-        photoId: photo.id.toString(),
-      })
-    })
-  })
-  
-  return params
+// 客户端版本的 getAlbumById 函数
+function getAlbumById(albums: Album[], id: string): Album | undefined {
+  return albums.find(album => album.id === id)
 }
 
-// 生成页面元数据
-export async function generateMetadata({ 
-  params 
-}: { 
-  params: { albumId: string; photoId: string } 
-}) {
-  const albums = loadAlbumsFromFile()
-  const album = getAlbumById(albums, params.albumId)
-  const photo = album?.photos.find(p => p.id === parseInt(params.photoId))
+export default function PhotoDetailPage() {
+  const params = useParams()
+  const albumId = params.albumId as string
+  const photoId = params.photoId as string
   
-  if (!album || !photo) {
-    return {
-      title: '照片未找到 - ImgHub',
+  const [album, setAlbum] = useState<Album | null>(null)
+  const [photo, setPhoto] = useState<Photo | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [notFound, setNotFound] = useState(false)
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await fetch('/api/albums', {
+          cache: 'no-store',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        })
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        
+        const data = await response.json()
+        
+        if (data.success) {
+          const foundAlbum = getAlbumById(data.albums, albumId)
+          if (foundAlbum) {
+            const foundPhoto = foundAlbum.photos.find((p: Photo) => p.id.toString() === photoId)
+            if (foundPhoto) {
+              setAlbum(foundAlbum)
+              setPhoto(foundPhoto)
+            } else {
+              setNotFound(true)
+            }
+          } else {
+            setNotFound(true)
+          }
+        } else {
+          setNotFound(true)
+        }
+      } catch (err) {
+        console.error('Error fetching data:', err)
+        setNotFound(true)
+      } finally {
+        setLoading(false)
+      }
     }
+
+    fetchData()
+  }, [albumId, photoId])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
+      </div>
+    )
   }
 
-  return {
-    title: `${photo.title} - ${album.title} - ImgHub`,
-    description: `欣赏摄影作品《${photo.title}》，来自${album.title}影集`,
-    openGraph: {
-      title: `${photo.title} - ${album.title} - ImgHub`,
-      description: `欣赏摄影作品《${photo.title}》，来自${album.title}影集`,
-      images: [photo.src],
-    },
-  }
-}
-
-export default function PhotoDetailPage({ params }: { params: { albumId: string; photoId: string } }) {
-  const albums = loadAlbumsFromFile()
-  const album = getAlbumById(albums, params.albumId)
-  const photo = album?.photos.find(p => p.id.toString() === params.photoId)
-
-  if (!album || !photo) {
-    notFound()
+  if (notFound || !album || !photo) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center text-white">
+          <h1 className="text-2xl font-bold mb-4">照片未找到</h1>
+          <p className="text-gray-300 mb-8">抱歉，您访问的照片不存在或已被删除。请检查URL是否正确，或浏览影集中的其他照片。</p>
+          <a 
+            href={`/albums/${albumId}`} 
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            返回影集
+          </a>
+        </div>
+      </div>
+    )
   }
 
   return (
