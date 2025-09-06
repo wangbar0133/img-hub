@@ -3,7 +3,7 @@ import { ImageProcessor } from '@/lib/imageProcessor'
 import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { existsSync } from 'fs'
-import { addLog, verifyAdminWithLogging } from '../logs/route'
+import { addLog, verifyAdminWithLogging } from '@/lib/logging'
 
 
 // 生成唯一ID

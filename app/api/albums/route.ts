@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { AlbumModel } from '@/lib/models/album'
-import { addLog } from '../admin/logs/route'
+import { addLog } from '@/lib/logging'
 
 // GET - 获取所有影集（公共API）
 export async function GET() {

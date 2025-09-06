@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { readFile, access } from 'fs/promises'
 import { constants } from 'fs'
-import { verifyAdminWithLogging } from '../logs/route'
+import { verifyAdminWithLogging } from '@/lib/logging'
 
 export async function GET(request: NextRequest) {
   try {

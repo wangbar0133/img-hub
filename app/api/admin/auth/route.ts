@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { sign, verify } from 'jsonwebtoken'
-import { addLog } from '../logs/route'
+import { addLog } from '@/lib/logging'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'img-hub-admin-secret-key-2024'
 

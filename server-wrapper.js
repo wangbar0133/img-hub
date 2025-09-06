@@ -1,5 +1,5 @@
 // 服务器启动包装器，用于拦截console输出到日志系统
-const { addLog } = require('./app/api/admin/logs/route');
+const { addLog } = require('./lib/logging');
 
 // 拦截console输出
 const originalConsoleLog = console.log;
