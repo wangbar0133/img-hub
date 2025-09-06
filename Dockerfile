@@ -84,5 +84,5 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
 
-# 启动服务器并将输出重定向到日志文件
-CMD ["sh", "-c", "node server.js 2>&1 | tee /app/logs/server.log"]
+# 启动服务器，使用内存日志系统而不是文件输出
+CMD ["node", "server.js"]

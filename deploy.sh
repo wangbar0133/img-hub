@@ -124,9 +124,17 @@ if [ ! -f "docker-compose.yml" ]; then
     exit 1
 fi
 
-# 创建必要的目录
+# 创建必要的目录和设置权限
 echo "📁 创建必要的目录..."
 mkdir -p data logs public/images
+
+# 设置目录权限确保Docker容器可以写入
+echo "🔐 设置目录权限..."
+# 容器中nextjs用户的UID是1001
+sudo chown -R 1001:1001 data logs public/images || chown -R 1001:1001 data logs public/images 2>/dev/null || {
+    echo "⚠️  无法设置目录所有者，尝试设置权限为777..."
+    chmod -R 777 data logs public/images
+}
 
 # 设置环境变量（如果.env文件不存在）
 if [ ! -f ".env" ]; then
@@ -203,18 +211,18 @@ while [ $attempt -le $max_attempts ]; do
     ((attempt++))
 done
 
-# 检查日志文件功能
+# 检查日志系统功能
 echo ""
-echo "📋 检查日志文件功能..."
+echo "📋 检查内存日志系统功能..."
 sleep 5
 
-if [ -f "logs/server.log" ]; then
-    echo "✅ server.log 文件已创建"
-    echo "  📄 最新日志内容:"
-    tail -5 logs/server.log | sed 's/^/    /'
+echo "  🔍 测试管理员日志API访问..."
+if curl -f -s -o /dev/null "http://localhost:3000/admin/logs"; then
+    echo "✅ 日志API访问正常"
+    echo "  📊 可以通过 http://localhost:3000/admin/logs 查看应用日志"
 else
-    echo "⚠️  server.log 文件未创建，检查容器日志:"
-    $DOCKER_COMPOSE logs --tail=10
+    echo "⚠️  日志API测试失败，检查容器日志:"
+    $DOCKER_COMPOSE logs --tail=15
 fi
 
 # 显示部署结果
@@ -228,8 +236,8 @@ echo "💾 数据备份: $BACKUP_DIR"
 echo ""
 echo "📋 常用命令:"
 echo "  查看服务状态: $DOCKER_COMPOSE ps"
-echo "  查看应用日志: $DOCKER_COMPOSE logs -f img-hub"
-echo "  查看服务器日志: tail -f logs/server.log"
+echo "  查看容器日志: $DOCKER_COMPOSE logs -f img-hub"
+echo "  查看应用日志: 访问 http://localhost:3000/admin/logs"
 echo "  停止服务: $DOCKER_COMPOSE down"
 echo "  重启服务: $DOCKER_COMPOSE restart"
 echo ""
