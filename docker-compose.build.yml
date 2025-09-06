@@ -2,8 +2,11 @@ version: '3.8'
 
 services:
   img-hub:
-    image: img-hub:latest  # 使用预构建的镜像
-    container_name: img-hub-server
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: img-hub:latest  # 构建时打标签
+    container_name: img-hub-server-build
     restart: unless-stopped
     volumes:
       # 持久化数据目录 (包含数据库文件)
@@ -30,7 +33,7 @@ services:
 
   nginx:
     image: nginx:alpine
-    container_name: img-hub-nginx
+    container_name: img-hub-nginx-build
     restart: unless-stopped
     ports:
       - "80:80"
