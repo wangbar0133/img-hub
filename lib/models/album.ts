@@ -152,10 +152,26 @@ export class AlbumModel {
   static async deleteAlbum(id: string): Promise<boolean> {
     const db = await getDatabase()
     
-    // 先删除所有相关的photos（通过外键约束会自动删除）
-    const result = await db.run('DELETE FROM albums WHERE id = ?', [id])
+    // 使用显式事务确保删除操作正确提交
+    await db.exec('BEGIN TRANSACTION')
     
-    return result.changes! > 0
+    try {
+      // 先删除所有相关的photos（通过外键约束会自动删除）
+      const result = await db.run('DELETE FROM albums WHERE id = ?', [id])
+      
+      // 确保操作成功后再提交
+      if (result.changes! > 0) {
+        await db.exec('COMMIT')
+        return true
+      } else {
+        await db.exec('ROLLBACK')
+        return false
+      }
+    } catch (error) {
+      // 如果出现任何错误，回滚事务
+      await db.exec('ROLLBACK')
+      throw error
+    }
   }
   
   static async updatePhotoCount(albumId: string): Promise<void> {
