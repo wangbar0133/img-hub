@@ -182,14 +182,23 @@ read -p "🚀 是否使用优化构建模式？(推荐使用，可减小镜像�
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "⚡ 使用优化构建模式..."
-    $DOCKER_COMPOSE build --no-cache --compress
+    if ! $DOCKER_COMPOSE build --no-cache --compress; then
+        echo "⚠️  优化构建失败，尝试标准构建..."
+        $DOCKER_COMPOSE build --no-cache
+    fi
     
     # 显示镜像大小对比
     echo "📊 镜像大小信息:"
-    docker images ${PROJECT_NAME}* --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}"
+    docker images ${PROJECT_NAME}* --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}" 2>/dev/null || true
 else
     echo "🔨 使用标准构建模式..."
-    $DOCKER_COMPOSE build --no-cache
+    if ! $DOCKER_COMPOSE build --no-cache; then
+        echo "❌ 标准构建也失败了，请检查Docker状态和系统资源"
+        echo "💡 建议运行以下命令后重试："
+        echo "  docker system prune -a -f"
+        echo "  docker builder prune -f"
+        exit 1
+    fi
 fi
 
 echo "🚀 启动服务..."
