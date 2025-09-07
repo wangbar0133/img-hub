@@ -36,10 +36,7 @@ ENV SHARP_IGNORE_GLOBAL_LIBVIPS=1
 # 复制源代码
 COPY . .
 
-# 创建构建时需要的占位文件
-RUN if [ ! -f public/albums.json ]; then \
-    echo '[]' > public/albums.json; \
-    fi
+# 注：不再需要 albums.json 占位文件，现在使用数据库存储
 
 # 构建应用
 ENV NODE_ENV=production

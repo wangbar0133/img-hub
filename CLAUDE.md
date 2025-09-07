@@ -47,9 +47,9 @@ The Dockerfile is optimized for minimal image size through:
 
 #### Data Flow
 
-- Image data is managed through `public/albums.json` - the single source of truth
+- Image data is managed through SQLite database - the single source of truth
 - Images are stored in 4-tier structure: thumbnail (400px) → src (800px) → detailSrc (900px) → originalSrc (full size)
-- Data interface in `data/albums.ts` imports from the JSON file
+- Data access through `lib/models/album.ts` and API routes
 - TypeScript types defined in `types/index.ts`
 
 #### Routing Structure
@@ -71,8 +71,8 @@ The Dockerfile is optimized for minimal image size through:
 #### Docker Architecture
 
 - Uses multi-stage build (Node.js builder → Nginx production)
-- **Data separation strategy**: Container excludes `public/images/` and `albums.json`, mounts them at runtime
-- This allows image updates without rebuilding containers
+- **Data separation strategy**: Container excludes `public/images/`, database persisted via volumes
+- This allows image and data updates without rebuilding containers
 - Nginx serves static files with optimized caching headers
 
 ### Image Management System
@@ -108,7 +108,8 @@ Next.js development server with API routes for admin functionality.
 
 ### Important Files
 
-- `public/albums.json` - Master data file containing all album and photo metadata
+- `lib/database.ts` - SQLite database connection and schema
+- `lib/models/album.ts` - Album data model and database operations
 - `lib/imageProcessor.ts` - Server-side image processing with Sharp
 - `app/admin/` - Admin interface components and pages
 - `app/api/admin/` - Admin API routes for authentication and data management
@@ -118,5 +119,5 @@ Next.js development server with API routes for admin functionality.
 
 - Use the web admin interface at `/admin` for all content management
 - Images are processed server-side with automatic optimization
-- Album data is stored in JSON format with type safety
+- Album data is stored in SQLite database with type safety
 - Admin credentials should be configured via environment variables for production
