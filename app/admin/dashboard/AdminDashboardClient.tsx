@@ -88,6 +88,8 @@ export default function AdminDashboardClient() {
   }
 
   const handleUpdateCover = async (albumId: string, coverPhotoId: number) => {
+    console.log('Setting cover:', { albumId, coverPhotoId })
+    
     try {
       const response = await fetch('/api/admin/albums/cover', {
         credentials: 'include',
@@ -96,15 +98,28 @@ export default function AdminDashboardClient() {
         body: JSON.stringify({ albumId, coverPhotoId })
       })
 
+      console.log('Cover update response:', response.status, response.statusText)
+
       if (!response.ok) {
-        throw new Error('Cover update failed')
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        console.error('Cover update failed:', errorData)
+        throw new Error(errorData.error || 'Cover update failed')
       }
 
+      const result = await response.json()
+      console.log('Cover update success:', result)
+
       // 重新加载数据
+      console.log('Reloading data...')
       const statsResponse = await fetch('/api/admin/albums', { credentials: 'include' })
       const data = await statsResponse.json()
       setStats(data)
+      
+      // 显示成功消息
+      alert('封面更新成功！')
+      
     } catch (error) {
+      console.error('Cover update error:', error)
       alert('封面更新失败: ' + error)
     }
   }
