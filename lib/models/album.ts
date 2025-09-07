@@ -189,23 +189,39 @@ export class AlbumModel {
   static async updateCover(albumId: string, coverPhotoId: number): Promise<boolean> {
     const db = await getDatabase()
     
-    // 首先验证照片是否存在于指定影集中
-    const photo = await db.get(`
-      SELECT src FROM photos 
-      WHERE id = ? AND album_id = ?
-    `, [coverPhotoId, albumId])
+    // 使用显式事务确保封面更新操作正确提交
+    await db.exec('BEGIN TRANSACTION')
     
-    if (!photo) {
-      return false
+    try {
+      // 首先验证照片是否存在于指定影集中
+      const photo = await db.get(`
+        SELECT src FROM photos 
+        WHERE id = ? AND album_id = ?
+      `, [coverPhotoId, albumId])
+      
+      if (!photo) {
+        await db.exec('ROLLBACK')
+        return false
+      }
+      
+      // 更新影集的封面信息
+      const result = await db.run(`
+        UPDATE albums 
+        SET cover_photo_id = ?, cover_image = ?
+        WHERE id = ?
+      `, [coverPhotoId, photo.src, albumId])
+      
+      if (result.changes! > 0) {
+        await db.exec('COMMIT')
+        return true
+      } else {
+        await db.exec('ROLLBACK')
+        return false
+      }
+    } catch (error) {
+      // 如果出现任何错误，回滚事务
+      await db.exec('ROLLBACK')
+      throw error
     }
-    
-    // 更新影集的封面信息
-    const result = await db.run(`
-      UPDATE albums 
-      SET cover_photo_id = ?, cover_image = ?
-      WHERE id = ?
-    `, [coverPhotoId, photo.src, albumId])
-    
-    return result.changes! > 0
   }
 }
