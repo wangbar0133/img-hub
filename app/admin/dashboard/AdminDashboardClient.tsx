@@ -17,6 +17,7 @@ export default function AdminDashboardClient() {
   const [error, setError] = useState('')
   const [editingAlbum, setEditingAlbum] = useState<Album | null>(null)
   const [editingPhoto, setEditingPhoto] = useState<{ album: Album; photo: Photo } | null>(null)
+  const [expandedAlbums, setExpandedAlbums] = useState<Set<string>>(new Set())
   
   const router = useRouter()
 
@@ -181,6 +182,16 @@ export default function AdminDashboardClient() {
     } catch (error) {
       alert('删除失败: ' + error)
     }
+  }
+
+  const toggleAlbumExpansion = (albumId: string) => {
+    const newExpanded = new Set(expandedAlbums)
+    if (newExpanded.has(albumId)) {
+      newExpanded.delete(albumId)
+    } else {
+      newExpanded.add(albumId)
+    }
+    setExpandedAlbums(newExpanded)
   }
 
   if (loading) {
@@ -350,9 +361,19 @@ export default function AdminDashboardClient() {
                   {/* 照片列表 */}
                   {album.photos.length > 0 && (
                     <div className="mt-4">
-                      <h5 className="text-sm font-medium text-gray-700 mb-2">照片列表 - 点击设为封面</h5>
+                      <div className="flex items-center justify-between mb-2">
+                        <h5 className="text-sm font-medium text-gray-700">照片列表 - 点击设为封面</h5>
+                        {album.photos.length > 6 && (
+                          <button
+                            onClick={() => toggleAlbumExpansion(album.id)}
+                            className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                          >
+                            {expandedAlbums.has(album.id) ? '收起' : `显示全部 ${album.photos.length} 张`}
+                          </button>
+                        )}
+                      </div>
                       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                        {album.photos.slice(0, 6).map((photo) => (
+                        {(expandedAlbums.has(album.id) ? album.photos : album.photos.slice(0, 6)).map((photo) => (
                           <div key={photo.id} className="relative group">
                             <div 
                               className={`relative w-full h-20 rounded overflow-hidden cursor-pointer border-2 transition-colors ${
@@ -397,11 +418,6 @@ export default function AdminDashboardClient() {
                             </div>
                           </div>
                         ))}
-                        {album.photos.length > 6 && (
-                          <div className="flex items-center justify-center text-sm text-gray-500">
-                            +{album.photos.length - 6} 更多
-                          </div>
-                        )}
                       </div>
                     </div>
                   )}

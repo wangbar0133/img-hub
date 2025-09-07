@@ -6,8 +6,8 @@ services:
     container_name: img-hub-local
     restart: unless-stopped
     ports:
-      # 直接暴露3000端口，不使用nginx代理
-      - "3000:3000"
+      # 直接暴露3001端口，不使用nginx代理
+      - "3001:3000"
     volumes:
       # 持久化数据目录
       - ./data:/app/data:rw
