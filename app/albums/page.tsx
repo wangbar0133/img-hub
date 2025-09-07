@@ -16,8 +16,13 @@ export default function AlbumsPage() {
       try {
         const response = await fetch(`/api/albums?t=${Date.now()}`, {
           cache: 'no-store',
+          mode: 'cors',
+          credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache',
+            'If-None-Match': '*', // 强制获取最新数据
           }
         })
         
@@ -28,6 +33,13 @@ export default function AlbumsPage() {
         const data = await response.json()
         
         if (data.success) {
+          // 临时调试：记录接收到的封面信息
+          console.log('Frontend received albums:', data.albums.map((album: any) => ({
+            id: album.id,
+            title: album.title,
+            coverImage: album.coverImage,
+            coverPhotoId: album.coverPhotoId
+          })))
           setAlbums(data.albums)
         }
       } catch (err) {

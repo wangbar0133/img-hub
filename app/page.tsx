@@ -17,8 +17,13 @@ export default function Home() {
       try {
         const response = await fetch(`/api/albums?t=${Date.now()}`, {
           cache: 'no-store',
+          mode: 'cors',
+          credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache',
+            'If-None-Match': '*',
           }
         })
         
