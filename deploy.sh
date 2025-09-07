@@ -171,8 +171,26 @@ fi
 echo ""
 
 # 构建和启动服务
-echo "🏗️  构建新镜像..."
-$DOCKER_COMPOSE build --no-cache
+echo "🏗️  构建新镜像（优化版本）..."
+
+# 优化Docker构建
+echo "📝 清理Docker构建缓存..."
+docker builder prune -f
+
+# 询问是否使用优化构建
+read -p "🚀 是否使用优化构建模式？(推荐使用，可减小镜像大小) (y/n): " -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    echo "⚡ 使用优化构建模式..."
+    $DOCKER_COMPOSE build --no-cache --compress
+    
+    # 显示镜像大小对比
+    echo "📊 镜像大小信息:"
+    docker images ${PROJECT_NAME}* --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}"
+else
+    echo "🔨 使用标准构建模式..."
+    $DOCKER_COMPOSE build --no-cache
+fi
 
 echo "🚀 启动服务..."
 $DOCKER_COMPOSE up -d

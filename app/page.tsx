@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react'
 import { Album } from '@/types'
 import HomeClient from './HomeClient'
 
+// 确保页面不被缓存
+export const dynamic = 'force-dynamic'
+
 export default function Home() {
   const [albums, setAlbums] = useState<Album[]>([])
   const [loading, setLoading] = useState(true)
@@ -12,7 +15,7 @@ export default function Home() {
   useEffect(() => {
     const fetchAlbums = async () => {
       try {
-        const response = await fetch('/api/albums', {
+        const response = await fetch(`/api/albums?t=${Date.now()}`, {
           cache: 'no-store',
           headers: {
             'Content-Type': 'application/json',

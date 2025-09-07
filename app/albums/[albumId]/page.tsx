@@ -20,7 +20,7 @@ export default function AlbumDetailPage() {
   useEffect(() => {
     const fetchAlbum = async () => {
       try {
-        const response = await fetch('/api/albums', {
+        const response = await fetch(`/api/albums?t=${Date.now()}`, {
           cache: 'no-store',
           headers: {
             'Content-Type': 'application/json',

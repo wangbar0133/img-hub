@@ -11,10 +11,17 @@ export async function GET() {
     
     addLog('info', `Public albums API: Retrieved ${albums.length} albums`)
     
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       albums
     })
+    
+    // 设置无缓存头，确保返回最新数据
+    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate')
+    response.headers.set('Pragma', 'no-cache')
+    response.headers.set('Expires', '0')
+    
+    return response
     
   } catch (error) {
     addLog('error', 'Public albums API error', { error: error instanceof Error ? error.message : String(error) })

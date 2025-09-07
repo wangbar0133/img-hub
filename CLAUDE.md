@@ -23,6 +23,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `docker-compose logs -f img-hub` - View application logs
 - `docker-compose ps` - Check container status
 - `docker-compose down` - Stop all services
+- `./deploy.sh` - Automated deployment with Docker image optimization options
+
+#### Docker Image Optimization
+
+The Dockerfile is optimized for minimal image size through:
+- **Multi-stage builds**: Separate stages for dependencies, building, and runtime
+- **Alpine Linux base**: Lightweight Node.js Alpine images
+- **Layer optimization**: Minimized layers and cleaned caches
+- **Production-only dependencies**: Separate installation of dev and prod dependencies
+- **Cache cleanup**: Removal of npm cache, build artifacts, and APK cache
 
 ## Architecture Overview
 
