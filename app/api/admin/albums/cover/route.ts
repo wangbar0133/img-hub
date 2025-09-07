@@ -29,16 +29,11 @@ function verifyAdmin() {
 // PUT - 更新影集封面
 export async function PUT(request: NextRequest) {
   try {
-    console.log('Cover update API called')
-    
     verifyAdmin()
-    console.log('Admin verification passed')
     
     const { albumId, coverPhotoId } = await request.json()
-    console.log('Request data:', { albumId, coverPhotoId })
     
     if (!albumId) {
-      console.log('Missing albumId')
       return NextResponse.json(
         { error: '缺少影集ID' },
         { status: 400 }
@@ -46,28 +41,22 @@ export async function PUT(request: NextRequest) {
     }
     
     if (coverPhotoId === null || coverPhotoId === undefined) {
-      console.log('Missing coverPhotoId')
       return NextResponse.json(
         { error: '缺少封面照片ID' },
         { status: 400 }
       )
     }
     
-    console.log('Calling AlbumModel.updateCover...')
     const success = await AlbumModel.updateCover(albumId, coverPhotoId)
-    console.log('AlbumModel.updateCover result:', success)
     
     if (!success) {
-      console.log('Update cover failed - album or photo not found')
       return NextResponse.json(
         { error: '影集不存在或指定的照片不存在于此影集中' },
         { status: 404 }
       )
     }
     
-    console.log('Getting updated album...')
     const updatedAlbum = await AlbumModel.getAlbumById(albumId)
-    console.log('Updated album:', updatedAlbum ? { id: updatedAlbum.id, coverPhotoId: updatedAlbum.coverPhotoId } : null)
     
     return NextResponse.json({
       success: true,

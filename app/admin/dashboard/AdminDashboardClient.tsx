@@ -88,8 +88,6 @@ export default function AdminDashboardClient() {
   }
 
   const handleUpdateCover = async (albumId: string, coverPhotoId: number) => {
-    console.log('Setting cover:', { albumId, coverPhotoId })
-    
     try {
       const response = await fetch('/api/admin/albums/cover', {
         credentials: 'include',
@@ -98,19 +96,12 @@ export default function AdminDashboardClient() {
         body: JSON.stringify({ albumId, coverPhotoId })
       })
 
-      console.log('Cover update response:', response.status, response.statusText)
-
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        console.error('Cover update failed:', errorData)
         throw new Error(errorData.error || 'Cover update failed')
       }
 
-      const result = await response.json()
-      console.log('Cover update success:', result)
-
       // 重新加载数据
-      console.log('Reloading data...')
       const statsResponse = await fetch('/api/admin/albums', { credentials: 'include' })
       const data = await statsResponse.json()
       setStats(data)
@@ -391,12 +382,11 @@ export default function AdminDashboardClient() {
                         {(expandedAlbums.has(album.id) ? album.photos : album.photos.slice(0, 6)).map((photo) => (
                           <div key={photo.id} className="relative group">
                             <div 
-                              className={`relative w-full h-20 rounded overflow-hidden cursor-pointer border-2 transition-colors ${
+                              className={`relative w-full h-20 rounded overflow-hidden border-2 transition-colors ${
                                 photo.id === album.coverPhotoId 
                                   ? 'border-blue-500 ring-2 ring-blue-200' 
                                   : 'border-transparent hover:border-gray-300'
                               }`}
-                              onClick={() => handleUpdateCover(album.id, Number(photo.id))}
                             >
                               <Image
                                 src={photo.thumbnail || photo.src}
@@ -412,6 +402,15 @@ export default function AdminDashboardClient() {
                               </div>
                             )}
                             <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 flex items-center justify-center space-x-1">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleUpdateCover(album.id, Number(photo.id))
+                                }}
+                                className="text-white text-xs bg-green-600 px-2 py-1 rounded"
+                              >
+                                设为封面
+                              </button>
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation()
