@@ -1,6 +1,6 @@
 # 📸 ImgHub - 现代摄影作品展示平台
 
-一个专注于摄影作品展示的现代化网站，使用 Next.js + Docker 构建，提供沉浸式的视觉体验。
+一个基于 **Next.js 前端 + Rust 后端 + MongoDB 数据库** 构建的现代化摄影作品展示平台，采用微服务架构，提供沉浸式的视觉体验和完整的内容管理系统。
 
 ## ✨ 核心特性
 
@@ -9,14 +9,35 @@
 - 📚 **影集体系** - 层级化的作品组织方式
 - 🖼️ **沉浸体验** - 全屏无干扰的作品浏览
 - 💫 **流畅动画** - 细腻的交互动画效果
-- ⚡ **性能优化** - 多层图片优化策略
+- ⭐ **精选展示** - 首页精选相册瀑布流展示
+- ⚡ **性能优化** - 四层图片优化策略
 - 🔐 **管理后台** - Web端内容管理系统
-- 🐳 **一键部署** - Docker 容器化部署
+- 🐳 **容器化部署** - Docker Hub + 微服务架构
+- 🔒 **HTTPS 支持** - 生产环境SSL证书管理
 
-## 🏗️ 网站架构
+## 🏗️ 系统架构
+
+### 微服务架构
+
+```text
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Nginx Proxy   │    │  Next.js 前端   │    │   Rust 后端     │
+│   (SSL + 反向)   │────│   (UI层)       │────│   (API + 业务)   │
+│     代理         │    │                │    │                │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+         │                        │                        │
+         │                        │                        │
+         └────────────────────────┼────────────────────────┘
+                                  │
+                         ┌─────────────────┐
+                         │   MongoDB       │
+                         │   (数据存储)     │
+                         └─────────────────┘
+```
 
 ### 页面结构
-```
+
+```text
 首页 (Hero + 精选影集)
 ├── 影集列表页 (/albums)
 │   ├── 旅行摄影 (/albums?category=travel)
@@ -25,271 +46,385 @@
 │   └── 照片详情页 (/albums/[albumId]/photos/[photoId])
 │       └── 全屏查看模式
 └── 管理后台 (/admin)
-    ├── 登录页面 (/admin)
-    ├── 管理面板 (/admin/dashboard)
-    └── 创建影集 (/admin/create-album)
+    ├── 上传界面 (/admin)
+    └── 相册管理 (/admin/manage)
 ```
 
-### 图片体系
-```
-四层图片结构：
-├── thumbnail (400px)    - 影集列表缩略图
-├── src (800px)         - 影集详情展示图
-├── detailSrc (900px)   - 照片详情页图片
-└── originalSrc (原尺寸) - 全屏查看原图
+### 图片处理流程
+
+```text
+原图上传 → Rust后端处理 → 四层图片生成
+├── thumbnail (300px)    - 相册列表缩略图
+├── src (800px)         - 相册详情展示图
+├── detail (900px)      - 照片详情页图片
+└── original (原尺寸)    - 全屏查看原图
 ```
 
 ## 🛠️ 技术栈
 
-- **前端框架**: Next.js 14 (App Router) + TypeScript
-- **样式系统**: Tailwind CSS + 自定义动画
-- **交互效果**: Framer Motion
-- **图标系统**: Lucide React
-- **图片处理**: Sharp (Next.js API 处理)
-- **认证系统**: JWT + HTTP-only cookies
-- **部署方案**: Docker + Docker Compose + Node.js Server
+### 前端 (Next.js)
+- **框架**: Next.js 14 (App Router) + TypeScript
+- **样式**: Tailwind CSS + 自定义动画
+- **交互**: Framer Motion
+- **图标**: Lucide React
+
+### 后端 (Rust)
+- **框架**: Axum + Tokio
+- **图片处理**: image crate
+- **数据库**: MongoDB driver
+- **认证**: JWT
+
+### 数据库
+- **主数据库**: MongoDB 7.0
+- **数据持久化**: Docker volumes
+
+### 部署架构
+- **容器化**: Docker + Docker Compose
+- **镜像仓库**: Docker Hub
+- **反向代理**: Nginx
+- **SSL证书**: Let's Encrypt + Certbot
 
 ## 🚀 快速开始
 
 ### 环境要求
 
-- Node.js 18+
-- Docker & Docker Compose
+- **开发环境**: Node.js 18+, Rust + MongoDB (或 Docker)
+- **生产部署**: Docker & Docker Compose, 域名 (可选)
 
 ### 本地开发
 
+#### 方法1: 纯开发模式
 ```bash
-# 克隆项目
+# 1. 克隆项目
 git clone <your-repo-url>
 cd img-hub
 
-# 安装依赖
+# 2. 安装前端依赖
 npm install
 
-# 启动开发服务器
+# 3. 启动 Rust 后端 (需要单独下载运行)
+# 后端项目地址: https://github.com/your-username/img-hub-backend
+# 默认运行在 http://localhost:8000
+
+# 4. 启动前端开发服务器
 npm run dev
 
-# 访问 http://localhost:3000
-# 管理后台 http://localhost:3000/admin (admin/admin123)
+# 5. 访问应用
+# 前端: http://localhost:3000
+# 后端API: http://localhost:8000
+```
+
+#### 方法2: Docker 开发模式
+```bash
+# 1. 克隆项目和配置环境
+git clone <your-repo-url>
+cd img-hub
+cp .env.example .env
+
+# 2. 启动完整服务 (前端 + 后端 + 数据库)
+docker-compose up -d
+
+# 3. 访问应用
+# 主站: http://localhost
+# 管理后台: http://localhost/admin
 ```
 
 ### 生产部署
 
+#### 环境准备
 ```bash
-# 1. 生成安全凭据
-./generate-credentials.sh
+# 1. 配置环境变量 (必填)
+cp .env.example .env
+# 编辑 .env 文件，设置以下变量:
+# DOCKER_USERNAME=your-dockerhub-username
+# IMAGE_TAG=latest
+# DOMAIN_NAME=yourdomain.com (如果使用域名)
+# SSL_EMAIL=your-email@example.com (HTTPS部署)
 
 # 2. 启动服务
-docker-compose --env-file .env.production up -d
+docker-compose up -d
 
-# 3. 查看状态
+# 3. 检查服务状态
 docker-compose ps
+docker-compose logs -f
 
-# 4. 访问网站 (使用HTTP默认端口80)
-# 主站: http://your-server-ip/
-# 管理后台: http://your-server-ip/admin
+# 4. 访问网站
+# HTTP: http://your-server-ip 或 http://yourdomain.com
+# HTTPS: https://yourdomain.com (配置SSL后)
 ```
 
 ## 🔐 管理后台
 
 ### 功能特性
 
-- **图片上传**: 多文件批量上传，自动处理4层尺寸
-- **影集管理**: 创建、编辑、删除影集
+- **图片上传**: 多文件批量上传，支持精选/隐藏标记
+- **相册管理**: 创建、编辑、删除相册，设置分类
+- **精选功能**: 设置精选相册，首页瀑布流展示
 - **封面设置**: 可视化封面选择界面
-- **数据管理**: 实时编辑照片和影集信息
-- **安全认证**: JWT身份验证，会话管理
+- **实时预览**: 管理界面即时反馈
+- **安全认证**: 后端JWT身份验证
 
 ### 使用流程
 
 1. **访问管理后台**: 浏览器打开 `/admin`
-2. **登录账户**: 使用配置的管理员凭据
-3. **上传图片**: 选择多个图片文件上传
-4. **创建影集**: 填写影集信息，选择封面
-5. **发布作品**: 影集立即在前台显示
+2. **上传图片**: 选择多个图片文件，设置相册信息
+3. **设置属性**: 勾选是否精选、是否隐藏
+4. **相册管理**: 在 `/admin/manage` 查看和管理所有相册
+5. **发布作品**: 相册立即在前台显示
 
-### 安全配置
+### 默认访问凭据
 
-```bash
-# 生产环境凭据设置
-export ADMIN_USERNAME="your-admin-username"
-export ADMIN_PASSWORD="your-secure-password"
-export JWT_SECRET="your-super-secret-jwt-key"
-```
+- **管理地址**: `http://your-domain/admin`
+- **默认账户**: 通过后端API配置
+- **HTTPS推荐**: 生产环境建议启用HTTPS
 
 ## 📂 项目结构
 
-```
-img-hub/
+```text
+img-hub/ (前端项目)
 ├── app/                     # Next.js App Router
 │   ├── layout.tsx          # 全局布局
-│   ├── page.tsx            # 首页
-│   ├── albums/             # 影集路由
-│   │   ├── page.tsx        # 影集列表页
-│   │   └── [albumId]/      # 动态路由
+│   ├── page.tsx            # 首页 (Hero + 精选相册)
+│   ├── albums/             # 相册路由
+│   │   ├── page.tsx        # 相册列表页
+│   │   └── [albumId]/      # 相册详情路由
 │   ├── admin/              # 管理后台
-│   │   ├── page.tsx        # 登录页面
-│   │   ├── dashboard/      # 管理面板
-│   │   └── create-album/   # 创建影集
-│   └── api/                # API路由
-│       └── admin/          # 管理API
+│   │   ├── page.tsx        # 上传界面
+│   │   └── manage/         # 相册管理页面
+│   └── api/                # API代理路由
+│       ├── albums/         # 相册API代理
+│       ├── featured-albums/ # 精选相册API
+│       └── upload/         # 上传API代理
 ├── components/             # 核心组件
 │   ├── Header.tsx          # 智能导航栏
-│   ├── AlbumGrid.tsx       # 影集网格展示
+│   ├── AlbumGrid.tsx       # 相册网格展示
+│   ├── FeaturedAlbumsSection.tsx # 精选相册瀑布流
 │   └── FullScreenModal.tsx # 全屏图片查看器
 ├── lib/                    # 工具库
-│   ├── imageProcessor.ts   # 服务端图片处理
-│   └── albumUtils.ts       # 影集工具函数
-├── data/
-│   └── albums.ts           # 影集数据接口
+│   └── albumUtils.ts       # 相册工具函数
 ├── types/
 │   └── index.ts            # TypeScript 类型定义
-├── public/
-│   ├── albums.json         # 影集数据文件
-│   └── images/             # 图片存储
-├── Dockerfile              # 容器构建配置
-├── docker-compose.yml      # 容器编排
-└── nginx.conf              # Web服务配置
+├── .env.example            # 环境变量示例
+├── docker-compose.yml      # 微服务编排配置
+├── nginx.conf              # Nginx反向代理配置
+└── Dockerfile              # 前端镜像构建配置
 ```
 
-## 🐳 Docker 部署
+## 🐳 Docker Hub 部署策略
 
-### 数据分离策略
-本项目采用**数据与应用分离**的部署策略：
+### 部署架构
 
-- ✅ **镜像精简**：镜像不包含图片数据
-- ✅ **动态挂载**：数据通过Docker volumes挂载
-- ✅ **零冲突**：避免内置文件冲突
-- ✅ **实时更新**：内容更新无需重建镜像
+本项目采用 **Docker Hub 镜像仓库 + 微服务** 部署策略：
 
-### 构建和运行
+- 🏗️ **分离构建**: 前端/后端镜像独立构建
+- 📦 **镜像仓库**: 使用 Docker Hub 存储和分发镜像
+- 🔄 **多平台支持**: 支持 ARM64 → x86_64 跨平台构建
+- 📁 **数据持久化**: 图片和数据库通过 volumes 持久化
+
+### 构建和发布流程
+
+#### 1. 前端镜像构建 (Mac M1 → Linux x86)
 
 ```bash
-# 构建镜像
-docker build -t img-hub .
+# 构建多平台镜像并推送到 Docker Hub
+docker buildx build --platform linux/amd64 \
+  -t your-dockerhub-username/img-hub-frontend:latest \
+  --push .
+```
 
-# 运行容器（数据挂载）
+#### 2. 后端镜像构建
+
+```bash
+# 后端项目构建 (需要单独的 Rust 后端项目)
+# 在后端项目目录执行:
+docker buildx build --platform linux/amd64 \
+  -t your-dockerhub-username/img-hub-backend:latest \
+  --push .
+```
+
+#### 3. 服务器部署
+
+```bash
+# 1. 配置环境变量
+export DOCKER_USERNAME=your-dockerhub-username
+export IMAGE_TAG=latest
+export DOMAIN_NAME=yourdomain.com
+
+# 2. 拉取镜像并启动服务
+docker-compose pull
 docker-compose up -d
 
-# 验证挂载
-docker exec img-hub-app ls -la /usr/share/nginx/html/
+# 3. 检查服务状态
+docker-compose ps
 ```
 
 ## 📊 性能优化
 
 ### 图片优化策略
 
-1. **四层图片架构** - 根据使用场景加载不同尺寸
-2. **服务端处理** - Sharp库高性能图片处理
-3. **Nginx 缓存** - 静态资源长期缓存
+1. **四层图片架构** - 根据使用场景加载不同尺寸 (Rust后端处理)
+2. **高性能处理** - Rust image crate 高效图片处理
+3. **Nginx 缓存** - 静态资源长期缓存和压缩
 4. **懒加载** - 视窗内图片按需加载
+5. **CDN友好** - 静态文件路径优化
 
-### 缓存配置
+### Nginx 缓存配置
 
 ```nginx
-# 图片文件：1年缓存
-location ~* \.(jpg|jpeg|png|gif|webp)$ {
+# 图片文件缓存 (后端静态文件)
+location /public/ {
+    proxy_pass http://img-hub-backend:8000/public/;
     expires 1y;
     add_header Cache-Control "public, immutable";
 }
 
-# 静态资源：1个月缓存
-location ~* \.(css|js)$ {
-    expires 1M;
-    add_header Cache-Control "public";
-}
+# Gzip 压缩
+gzip on;
+gzip_vary on;
+gzip_min_length 1024;
+gzip_types text/plain text/css application/json application/javascript;
 ```
+
+### 数据库优化
+
+- **MongoDB 索引**: 相册ID、分类字段建立索引
+- **连接池**: Rust后端使用连接池管理数据库连接
+- **缓存策略**: 前端API路由层实现适当缓存
 
 ## 🔧 运维管理
 
 ### 监控命令
 
 ```bash
-# 查看容器状态
+# 查看所有服务状态
 docker-compose ps
 
-# 查看应用日志
-docker-compose logs -f img-hub
+# 查看各服务日志
+docker-compose logs -f img-hub-frontend
+docker-compose logs -f img-hub-backend
+docker-compose logs -f mongodb
+docker-compose logs -f nginx
 
-# 查看系统资源
+# 查看系统资源使用
 docker stats
 
-# 重启服务
-docker-compose restart
+# 重启特定服务
+docker-compose restart img-hub-frontend
+docker-compose restart img-hub-backend
 ```
 
 ### 备份策略
 
 ```bash
-# 数据备份
-tar -czf backup_$(date +%Y%m%d).tar.gz data/
+# 数据备份 (MongoDB + 静态文件)
+docker exec img-hub-mongodb mongodump --out /backup
+tar -czf backup_$(date +%Y%m%d).tar.gz ./static
 
 # 数据恢复
+docker exec img-hub-mongodb mongorestore /backup
 tar -xzf backup_20240101.tar.gz
+```
+
+### 服务健康检查
+
+```bash
+# 检查前端服务
+curl -I http://localhost/
+
+# 检查后端API
+curl -I http://localhost/api/albums
+
+# 检查数据库连接
+docker exec img-hub-mongodb mongosh --eval "db.runCommand('ping')"
 ```
 
 ## 🚨 故障排除
 
 ### 常见问题
 
-**管理后台网络错误/无法登录**
+#### 前端服务问题
+
 ```bash
-# 1. 检查服务模式（确保使用服务器模式，非静态导出）
-docker-compose logs img-hub | grep "ready"
+# 前端无法访问
+docker-compose logs -f img-hub-frontend
 
-# 2. 检查API路由是否可访问
-curl http://localhost/api/admin/auth
+# 检查前端健康状态
+docker exec img-hub-frontend wget --spider http://localhost:3000/
 
-# 3. 检查环境变量
-docker exec img-hub-server env | grep ADMIN
-
-# 4. HTTP部署的cookie问题 - 建议升级HTTPS
-# HTTP环境下cookie secure标志导致登录失败
-curl -X POST http://server-ip/api/admin/auth/ \
-  -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"admin123"}'
-
-# 5. HTTPS部署解决cookie安全问题
-curl -X POST https://server-ip/api/admin/auth/ \
-  -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"your-password"}'
-
-# 6. 重新生成凭据
-./generate-credentials.sh
-docker-compose restart
+# 重启前端服务
+docker-compose restart img-hub-frontend
 ```
 
-**图片无法显示**
-```bash
-# 检查挂载权限
-ls -la data/images/
-chmod 755 data/images/
+#### 后端API问题
 
-# 检查容器挂载
-docker inspect img-hub-server | grep Mounts
+```bash
+# 后端API无响应
+docker-compose logs -f img-hub-backend
+
+# 检查后端健康状态
+docker exec img-hub-backend curl -f http://localhost:8000/
+
+# 检查环境变量配置
+docker exec img-hub-backend env | grep DATABASE_URL
+
+# 重启后端服务
+docker-compose restart img-hub-backend
 ```
 
-**服务无法启动**
+#### 数据库连接问题
+
 ```bash
-# 查看端口占用
-netstat -tlnp | grep :80
+# 检查MongoDB状态
+docker-compose logs -f mongodb
 
-# 查看详细日志
-docker-compose logs img-hub
+# 测试数据库连接
+docker exec img-hub-mongodb mongosh --eval "db.runCommand('ping')"
 
-# 检查Docker镜像构建
-docker build -t img-hub-server .
+# 检查数据库认证
+docker exec img-hub-mongodb mongosh -u admin -p admin123 --authenticationDatabase admin
 ```
 
-**静态导出模式 vs 服务器模式**
-```bash
-# ⚠️ 静态模式（已弃用，不支持管理后台）
-# output: 'export' in next.config.js
-# 只支持静态页面，无API路由
+#### 图片无法显示
 
-# ✅ 服务器模式（当前配置）
-# 支持完整的Next.js功能，包括API路由
-# 管理后台功能正常工作
+```bash
+# 检查静态文件挂载
+ls -la ./static/
+docker exec img-hub-backend ls -la /app/static/
+
+# 检查后端静态文件服务
+curl -I http://localhost/public/
+
+# 修复权限问题
+sudo chown -R 1000:1000 ./static/
+```
+
+#### Nginx 代理问题
+
+```bash
+# 检查Nginx配置
+docker-compose logs -f nginx
+
+# 测试代理转发
+curl -I http://localhost/api/albums
+curl -I http://localhost/
+
+# 重启Nginx
+docker-compose restart nginx
+```
+
+#### HTTPS 证书问题
+
+```bash
+# 检查证书文件
+sudo ls -la /etc/letsencrypt/live/yourdomain.com/
+
+# 重新获取证书
+docker-compose down
+sudo certbot certonly --standalone -d yourdomain.com
+docker-compose up -d
+
+# 检查证书有效期
+sudo certbot certificates
 ```
 
 ## 🚀 生产环境部署
@@ -297,14 +432,14 @@ docker build -t img-hub-server .
 ### 系统要求
 
 - **操作系统**: Ubuntu 20.04+ / CentOS 8+ / Debian 11+
-- **内存**: 最低 1GB，推荐 2GB+
-- **存储**: 最低 10GB，推荐 50GB+（用于图片存储）
+- **内存**: 最低 2GB，推荐 4GB+ (多个微服务)
+- **存储**: 最低 20GB，推荐 100GB+ (数据库 + 图片存储)
 - **网络**: 公网IP，开放 80/443 端口
 
-### 快速部署
+### 一键部署脚本
 
 ```bash
-# 1. 安装 Docker
+# 1. 安装 Docker 环境
 curl -fsSL https://get.docker.com -o get-docker.sh
 sudo sh get-docker.sh
 
@@ -315,226 +450,167 @@ sudo chmod +x /usr/local/bin/docker-compose
 # 2. 项目部署
 mkdir -p /opt/img-hub && cd /opt/img-hub
 git clone <your-repo-url> .
-mkdir -p data/images logs
-echo '[]' > data/albums.json
 
-# 3. 生成安全凭据
-./generate-credentials.sh
+# 3. 配置环境变量
+cp .env.example .env
+# 编辑 .env 文件，设置必要参数:
+# DOCKER_USERNAME=your-dockerhub-username
+# DOMAIN_NAME=yourdomain.com
+# SSL_EMAIL=your-email@example.com
 
-# 4. 启动服务（服务器模式，支持API路由）
-docker-compose --env-file .env.production up -d
+# 4. 创建数据目录
+mkdir -p ./static
 
-# 5. 验证部署
+# 5. 启动所有服务
+docker-compose up -d
+
+# 6. 验证部署状态
 docker-compose ps
-curl http://localhost/
+docker-compose logs -f
 ```
 
-### 安全配置
+### HTTPS 配置 (推荐)
 
-#### 管理员账户设置
-
-**方法1：自动生成（推荐）**
-```bash
-./generate-credentials.sh
-# 自动生成强随机密码和JWT密钥
-```
-
-**方法2：手动配置**
-```bash
-cat > .env.production << EOF
-ADMIN_USERNAME=admin
-ADMIN_PASSWORD=$(openssl rand -base64 16)
-JWT_SECRET=$(openssl rand -base64 32)
-NODE_ENV=production
-EOF
-
-chmod 600 .env.production
-```
-
-#### 防火墙配置
+#### SSL 证书自动配置
 
 ```bash
-# Ubuntu/Debian
-sudo ufw allow 22/tcp    # SSH
-sudo ufw allow 80/tcp    # HTTP
-sudo ufw allow 443/tcp   # HTTPS
-sudo ufw enable
-
-# CentOS/RHEL
-sudo firewall-cmd --permanent --add-port=80/tcp
-sudo firewall-cmd --permanent --add-port=443/tcp
-sudo firewall-cmd --reload
-```
-
-#### HTTPS 配置
-
-**重要**: 如果使用HTTP部署，管理后台登录可能因cookie安全策略失败，建议配置HTTPS。
-
-##### 1. 安装 SSL 证书工具
-```bash
-# Debian/Ubuntu
-sudo apt update && sudo apt install certbot -y
-
-# 或使用 Snap 安装最新版本 (推荐)
-sudo apt install snapd -y
-sudo snap install --classic certbot
-sudo ln -s /snap/bin/certbot /usr/bin/certbot
-
-# CentOS/RHEL  
-sudo yum install certbot -y
-# 或 sudo dnf install certbot -y
-
-# 验证安装
-certbot --version
-```
-
-##### 2. 停止服务并获取证书
-```bash
-# 停止当前服务释放80端口
+# 1. 确保域名已解析到服务器
+# 2. 停止服务释放80端口
 docker-compose down
 
-# 确认80端口已释放
-sudo netstat -tlnp | grep :80
-
-# 获取 Let's Encrypt SSL证书 (替换为你的域名和邮箱)
-sudo certbot certonly \
-  --standalone \
+# 3. 获取 Let's Encrypt 证书
+sudo apt install certbot -y
+sudo certbot certonly --standalone \
   --email your-email@example.com \
   --agree-tos \
-  --non-interactive \
-  -d img.neicun.online
+  -d yourdomain.com
 
-# 验证证书文件
-sudo ls -la /etc/letsencrypt/live/img.neicun.online/
+# 4. 启动HTTPS服务
+docker-compose up -d
+
+# 5. 验证HTTPS访问
+curl -I https://yourdomain.com/
 ```
 
-##### 3. 启用 HTTPS 并部署
+#### 证书自动续期
+
 ```bash
-# 在 .env.production 中启用 HTTPS
-echo "FORCE_HTTPS=true" >> .env.production
-
-# 部署服务 (包含 Nginx 反向代理)
-docker-compose --env-file .env.production up -d
-```
-
-##### 4. 验证 HTTPS 部署
-```bash
-# 检查服务状态
-docker-compose ps
-
-# 验证 HTTPS 访问
-curl -I https://img.neicun.online/
-curl -I https://img.neicun.online/admin
-```
-
-##### 5. 设置证书自动续期
-```bash
-# 添加自动续期任务
+# 添加续期任务到系统crontab
 sudo crontab -e
 
-# 添加以下行 (替换为实际项目路径)
+# 添加以下行：
 0 3 * * * /usr/bin/certbot renew --quiet && cd /opt/img-hub && docker-compose restart nginx
 ```
 
-**HTTPS 部署后的访问地址**:
-- 主站: `https://img.neicun.online/`  
-- 管理后台: `https://img.neicun.online/admin`
+#### 访问地址
 
-### 运维管理
+部署完成后的访问地址：
 
-#### 监控命令
-
-```bash
-# 查看服务状态
-docker-compose ps
-
-# 查看应用日志
-docker-compose logs -f img-hub
-
-# 系统资源监控
-docker stats
-```
-
-#### 备份策略
-
-```bash
-# 创建备份脚本
-cat > backup.sh << 'EOF'
-#!/bin/bash
-DATE=$(date +%Y%m%d_%H%M%S)
-mkdir -p /backup/img-hub/$DATE
-cp -r ./data /backup/img-hub/$DATE/
-cp .env.production /backup/img-hub/$DATE/
-tar -czf /backup/img-hub/backup_$DATE.tar.gz /backup/img-hub/$DATE
-echo "备份完成: backup_$DATE.tar.gz"
-EOF
-
-chmod +x backup.sh
-
-# 设置定时备份
-echo "0 2 * * * /opt/img-hub/backup.sh" | crontab -
-```
+- **HTTP访问**: `http://your-server-ip/` 或 `http://yourdomain.com/`
+- **HTTPS访问**: `https://yourdomain.com/` (配置SSL后)
+- **管理后台**: `/admin` 路径
 
 ### 部署检查清单
 
-- [ ] 服务器系统要求满足
-- [ ] Docker 和 Docker Compose 已安装  
-- [ ] 项目文件已下载到服务器
-- [ ] 数据目录和文件已创建
-- [ ] 管理员凭据已安全配置
-- [ ] 防火墙端口已开放
-- [ ] 服务已启动并运行正常
-- [ ] 网站前台可正常访问
-- [ ] 管理后台可正常登录
-- [ ] 图片上传功能正常
+- [ ] 服务器系统要求满足 (2GB+ 内存, 20GB+ 存储)
+- [ ] Docker 和 Docker Compose 已安装
+- [ ] 项目文件已克隆到服务器
+- [ ] 环境变量已正确配置 (.env 文件)
+- [ ] Docker Hub 镜像访问权限正常
+- [ ] 防火墙端口已开放 (80, 443)
+- [ ] 所有微服务启动正常
+- [ ] 前端页面可正常访问
+- [ ] 后端API可正常响应
+- [ ] 数据库连接正常
+- [ ] 图片上传和显示功能正常
+- [ ] SSL证书配置正常 (如启用HTTPS)
 - [ ] 备份策略已设置
 
-## 📈 扩展功能
+## 📈 功能特性
 
 ### 已实现功能
 
-- ✅ **Web管理后台** - 完整的内容管理系统
-- ✅ **图片批量上传** - 多文件同时处理
-- ✅ **封面选择功能** - 可视化封面设置
-- ✅ **实时预览** - 管理界面即时反馈
-- ✅ **JWT认证** - 安全的身份验证
+- ✅ **微服务架构** - 前端/后端/数据库独立部署
+- ✅ **精选相册** - 首页瀑布流展示，原比例显示
+- ✅ **相册管理** - 创建、编辑、删除，支持隐藏/精选标记
+- ✅ **图片批量上传** - 多文件同时处理，四层尺寸生成
+- ✅ **全屏浏览** - 沉浸式图片查看体验
+- ✅ **响应式设计** - 桌面端和移动端完美适配
+- ✅ **Docker Hub部署** - 多平台镜像构建和分发
+- ✅ **HTTPS支持** - SSL证书自动管理和续期
+- ✅ **数据持久化** - MongoDB + 静态文件挂载
 
-### 计划中的功能
+### 技术亮点
 
-- 📊 **访问统计** - 作品浏览数据分析
-- 💬 **评论系统** - 作品互动功能
-- 🔍 **搜索功能** - 全站内容搜索
-- 🌍 **多语言** - 国际化支持
-- 📱 **PWA 支持** - 渐进式Web应用
+- 🚀 **高性能**: Rust后端 + Next.js前端
+- 🔄 **跨平台**: ARM64 → x86_64 镜像构建
+- 📦 **容器化**: Docker Compose 微服务编排
+- 🔒 **安全性**: Nginx反向代理 + JWT认证
+- ⚡ **性能优化**: 图片缓存 + Gzip压缩
 
 ## 🎯 最佳实践
 
 ### 内容管理
-- 📏 **合理尺寸**: 上传高质量原图，系统自动优化
-- 🏷️ **准确分类**: travel/cosplay 明确划分
-- 📝 **优质描述**: 简洁有力的作品描述
-- 🖼️ **精选封面**: 选择最具代表性的封面图片
 
-### 安全管理
-- 🔐 **强密码**: 使用复杂的管理员密码
-- 🔑 **定期更换**: 定期更新JWT密钥
-- 🌐 **HTTPS**: 生产环境启用SSL证书
-- 🔒 **访问限制**: 限制管理后台访问IP
+- 📏 **图片规格**: 建议上传高质量原图 (2000px+)，后端自动生成四种尺寸
+- 🏷️ **分类策略**: travel/cosplay 分类明确，便于用户浏览
+- ⭐ **精选设置**: 选择最优质作品设为精选，首页展示
+- 📝 **描述优化**: 简洁有力的相册描述，提升用户体验
+
+### 部署管理
+
+- 🐳 **镜像更新**: 定期更新Docker镜像到最新版本
+- 💾 **数据备份**: 定期备份MongoDB数据和静态文件
+- 🔐 **安全加固**: 启用HTTPS，配置强密码策略
+- 📊 **监控运维**: 定期检查服务状态和系统资源
+
+## 🤝 贡献指南
+
+欢迎为 ImgHub 项目贡献代码！
+
+### 开发流程
+
+1. **Fork 项目** - 点击右上角 Fork 按钮
+2. **克隆仓库** - `git clone https://github.com/your-username/img-hub.git`
+3. **安装依赖** - `npm install`
+4. **创建分支** - `git checkout -b feature/your-feature`
+5. **开发测试** - 完成功能开发和测试
+6. **提交代码** - `git commit -m "feat: add your feature"`
+7. **推送分支** - `git push origin feature/your-feature`
+8. **创建PR** - 在GitHub上创建Pull Request
+
+### 项目结构
+
+- **前端项目**: 当前仓库 (Next.js + TypeScript)
+- **后端项目**: 独立的 Rust API 服务器
+- **部署配置**: Docker Compose + Nginx
+
+### 开发环境
+
+```bash
+# 前端开发
+npm run dev          # 启动开发服务器
+npm run build        # 构建生产版本
+npm run lint         # 代码检查
+
+# Docker 开发
+docker-compose up -d # 启动完整服务栈
+```
 
 ## 📄 许可证
 
 MIT License - 自由使用和修改
 
-## 🤝 贡献指南
-
-欢迎提交 Issues 和 Pull Requests！
-
-1. Fork 本仓库
-2. 创建功能分支
-3. 提交更改
-4. 推送到分支
-5. 开启 Pull Request
-
 ---
 
-**ImgHub** - 让每一张照片都有被欣赏的机会 📸✨
+## 🌟 项目亮点
+
+**ImgHub** 是一个现代化的摄影作品展示平台，采用最新的技术栈和微服务架构：
+
+- 🏗️ **前后端分离**: Next.js + Rust + MongoDB 微服务架构
+- 🎨 **精美设计**: 瀑布流布局，沉浸式全屏体验
+- ⚡ **高性能**: Rust高性能后端，四层图片优化
+- 🐳 **云原生**: Docker容器化，支持Docker Hub部署
+- 🔒 **生产就绪**: HTTPS支持，安全认证，监控运维
+
+**让每一张照片都有被欣赏的机会** 📸✨

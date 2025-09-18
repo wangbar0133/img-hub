@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Download, ZoomIn, ZoomOut, RotateCw, Share2, Info } from 'lucide-react'
 import { Photo } from '@/types'
+import { getPhotoUrl } from '@/lib/albumUtils'
 
 interface FullScreenModalProps {
   photo: Photo
@@ -20,7 +21,6 @@ export default function FullScreenModal({ photo, isOpen, onClose }: FullScreenMo
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
   const [lastTouchDistance, setLastTouchDistance] = useState(0)
   const [isTouchZooming, setIsTouchZooming] = useState(false)
-  const [touchCenter, setTouchCenter] = useState({ x: 0, y: 0 })
   const [showControls, setShowControls] = useState(true)
   const [showExitHint, setShowExitHint] = useState(true)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -28,7 +28,7 @@ export default function FullScreenModal({ photo, isOpen, onClose }: FullScreenMo
 
   // 获取原始图片源
   const getOriginalImageSrc = (photo: Photo) => {
-    return photo.originalSrc || photo.src
+    return getPhotoUrl(photo.src)
   }
 
   // 计算两点距离 (用于触摸缩放)
@@ -164,7 +164,7 @@ export default function FullScreenModal({ photo, isOpen, onClose }: FullScreenMo
       const distance = getTouchDistance(e.touches)
       const center = getTouchCenter(e.touches)
       setLastTouchDistance(distance)
-      setTouchCenter(center)
+      // setTouchCenter(center)
     }
   }
 
@@ -299,7 +299,7 @@ export default function FullScreenModal({ photo, isOpen, onClose }: FullScreenMo
       
       const link = document.createElement('a')
       link.href = url
-      link.download = `${photo.title}_original.jpg`
+      link.download = `photo_original.jpg`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
@@ -307,7 +307,7 @@ export default function FullScreenModal({ photo, isOpen, onClose }: FullScreenMo
     } catch (error) {
       const link = document.createElement('a')
       link.href = getOriginalImageSrc(photo)
-      link.download = `${photo.title}_original.jpg`
+      link.download = `photo_original.jpg`
       link.target = '_blank'
       link.click()
     }
@@ -317,8 +317,8 @@ export default function FullScreenModal({ photo, isOpen, onClose }: FullScreenMo
   const handleShare = () => {
     if (navigator.share) {
       navigator.share({
-        title: photo.title,
-        text: `欣赏摄影作品《${photo.title}》`,
+        title: '精美照片',
+        text: '欣赏这张精美的照片',
         url: window.location.href
       })
     } else {
@@ -403,9 +403,9 @@ export default function FullScreenModal({ photo, isOpen, onClose }: FullScreenMo
                     <div className="flex items-center space-x-2 text-white">
                       <Info className="w-5 h-5" />
                       <div>
-                        <h3 className="font-medium">{photo.title}</h3>
-                        {photo.camera && (
-                          <p className="text-sm text-white/80">{photo.camera} • {photo.settings}</p>
+                        <h3 className="font-medium">照片详情</h3>
+                        {photo.info && photo.info.camera_make && (
+                          <p className="text-sm text-white/80">{photo.info.camera_make} {photo.info.camera_model}</p>
                         )}
                       </div>
                     </div>
@@ -492,7 +492,7 @@ export default function FullScreenModal({ photo, isOpen, onClose }: FullScreenMo
             
             <motion.img
               ref={imageRef}
-              key={photo.id}
+              key="fullscreen-modal"
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ 
                 opacity: isImageLoaded ? 1 : 0,
@@ -500,7 +500,7 @@ export default function FullScreenModal({ photo, isOpen, onClose }: FullScreenMo
               }}
               transition={{ duration: 0.3 }}
               src={getOriginalImageSrc(photo)}
-              alt={photo.alt}
+              alt="照片"
               className="max-w-full max-h-full object-contain"
               style={{
                 transform: `translate(${position.x}px, ${position.y}px) scale(${zoom}) rotate(${rotation}deg)`,

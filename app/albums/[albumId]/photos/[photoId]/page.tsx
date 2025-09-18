@@ -2,13 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import { Album, Photo } from '@/types'
+import { Album } from '@/types'
 import PhotoDetailClient from './PhotoDetailClient'
-
-// 客户端版本的 getAlbumById 函数
-function getAlbumById(albums: Album[], id: string): Album | undefined {
-  return albums.find(album => album.id === id)
-}
 
 export default function PhotoDetailPage() {
   const params = useParams()
@@ -16,14 +11,16 @@ export default function PhotoDetailPage() {
   const photoId = params.photoId as string
   
   const [album, setAlbum] = useState<Album | null>(null)
-  const [photo, setPhoto] = useState<Photo | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
+
+  // Convert photoId to index
+  const photoIndex = parseInt(photoId, 10)
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch(`/api/albums?t=${Date.now()}`, {
+        const response = await fetch(`/api/albums/${albumId}?t=${Date.now()}`, {
           cache: 'no-store',
           headers: {
             'Content-Type': 'application/json',
@@ -36,16 +33,9 @@ export default function PhotoDetailPage() {
         
         const data = await response.json()
         
-        if (data.success) {
-          const foundAlbum = getAlbumById(data.albums, albumId)
-          if (foundAlbum) {
-            const foundPhoto = foundAlbum.photos.find((p: Photo) => p.id.toString() === photoId)
-            if (foundPhoto) {
-              setAlbum(foundAlbum)
-              setPhoto(foundPhoto)
-            } else {
-              setNotFound(true)
-            }
+        if (data.success && data.album) {
+          if (photoIndex >= 0 && photoIndex < data.album.photos.length) {
+            setAlbum(data.album)
           } else {
             setNotFound(true)
           }
@@ -60,8 +50,14 @@ export default function PhotoDetailPage() {
       }
     }
 
+    if (isNaN(photoIndex)) {
+      setNotFound(true)
+      setLoading(false)
+      return
+    }
+
     fetchData()
-  }, [albumId, photoId])
+  }, [albumId, photoId, photoIndex])
 
   if (loading) {
     return (
@@ -71,7 +67,7 @@ export default function PhotoDetailPage() {
     )
   }
 
-  if (notFound || !album || !photo) {
+  if (notFound || !album) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center text-white">
@@ -90,7 +86,7 @@ export default function PhotoDetailPage() {
 
   return (
     <div className="bg-black">
-      <PhotoDetailClient album={album} photo={photo} />
+      <PhotoDetailClient album={album} photoIndex={photoIndex} />
     </div>
   )
 } 

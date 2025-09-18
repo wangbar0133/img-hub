@@ -9,44 +9,71 @@ export const dynamic = 'force-dynamic'
 
 export default function Home() {
   const [albums, setAlbums] = useState<Album[]>([])
+  const [featuredAlbums, setFeaturedAlbums] = useState<Album[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const fetchAlbums = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch(`/api/albums?t=${Date.now()}`, {
-          cache: 'no-store',
-          mode: 'cors',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache',
-            'If-None-Match': '*',
-          }
-        })
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
+        // 并行获取所有相册和精选相册
+        const [albumsResponse, featuredResponse] = await Promise.all([
+          fetch(`/api/albums?t=${Date.now()}`, {
+            cache: 'no-store',
+            mode: 'cors',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-cache',
+              'Pragma': 'no-cache',
+              'If-None-Match': '*',
+            }
+          }),
+          fetch(`/api/featured-albums?t=${Date.now()}`, {
+            cache: 'no-store',
+            mode: 'cors',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-cache',
+              'Pragma': 'no-cache',
+              'If-None-Match': '*',
+            }
+          })
+        ])
+
+        if (!albumsResponse.ok) {
+          throw new Error(`Albums API error! status: ${albumsResponse.status}`)
         }
-        
-        const data = await response.json()
-        
-        if (data.success) {
-          setAlbums(data.albums)
+
+        if (!featuredResponse.ok) {
+          throw new Error(`Featured albums API error! status: ${featuredResponse.status}`)
+        }
+
+        const [albumsData, featuredData] = await Promise.all([
+          albumsResponse.json(),
+          featuredResponse.json()
+        ])
+
+        if (albumsData.success) {
+          setAlbums(albumsData.albums)
         } else {
           setError('获取相册数据失败')
         }
+
+        if (featuredData.success) {
+          setFeaturedAlbums(featuredData.albums)
+        }
+
       } catch (err) {
         setError('网络请求失败')
-        console.error('Error fetching albums:', err)
+        console.error('Error fetching data:', err)
       } finally {
         setLoading(false)
       }
     }
 
-    fetchAlbums()
+    fetchData()
   }, [])
 
   if (loading) {
@@ -76,5 +103,5 @@ export default function Home() {
     )
   }
 
-  return <HomeClient initialAlbums={albums} />
+  return <HomeClient initialAlbums={albums} featuredAlbums={featuredAlbums} />
 } 

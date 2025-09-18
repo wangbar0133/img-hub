@@ -9,25 +9,24 @@ import {
   Download,
   Share2,
   Camera,
-  Settings,
   Calendar,
   Maximize2,
-  Tag,
 } from 'lucide-react'
 import { Album, Photo } from '@/types'
 import FullScreenModal from '@/components/FullScreenModal'
+import { getPhotoUrl } from '@/lib/albumUtils'
 
 interface PhotoDetailClientProps {
   album: Album
-  photo: Photo
+  photoIndex: number
 }
 
-export default function PhotoDetailClient({ album, photo }: PhotoDetailClientProps) {
+export default function PhotoDetailClient({ album, photoIndex }: PhotoDetailClientProps) {
   const params = useParams()
   const router = useRouter()
   const albumId = params.albumId as string
   
-  const [currentIndex, setCurrentIndex] = useState<number>(0)
+  const [currentIndex, setCurrentIndex] = useState<number>(photoIndex)
   const [isImageLoaded, setIsImageLoaded] = useState(false)
   const [isFullScreenOpen, setIsFullScreenOpen] = useState(false)
   const [infoVisible, setInfoVisible] = useState(false)
@@ -38,33 +37,45 @@ export default function PhotoDetailClient({ album, photo }: PhotoDetailClientPro
   const containerRef = useRef<HTMLDivElement>(null)
   const infoRef = useRef<HTMLDivElement>(null)
 
-  // 获取详情页图片源（优先使用detailSrc 900p不裁切）
+  // 获取当前照片
+  const photo = album.photos[currentIndex]
+
+  // 获取详情页图片源
   const getDetailImageSrc = (photo: Photo) => {
-    return photo.detailSrc || photo.src || photo.thumbnail
+    return getPhotoUrl(photo.detail)
   }
 
   // 获取下载用的图片源（优先使用原始图片）
   const getDownloadImageSrc = (photo: Photo) => {
-    return photo.originalSrc || photo.src
+    return getPhotoUrl(photo.src)
+  }
+
+  // 从文件路径中提取文件名（去掉扩展名）
+  const getPhotoName = (photo: Photo) => {
+    const filename = photo.src || photo.detail
+    if (!filename) return `照片 ${currentIndex + 1}`
+    
+    // 移除文件扩展名
+    const nameWithoutExt = filename.replace(/\.[^/.]+$/, "")
+    return nameWithoutExt
   }
 
   // 初始化当前照片索引
   useEffect(() => {
-    const index = album.photos.findIndex(p => p.id === photo.id)
-    setCurrentIndex(index)
-  }, [album.photos, photo.id])
+    setCurrentIndex(photoIndex)
+  }, [photoIndex])
 
   const handlePrevPhoto = () => {
     if (currentIndex > 0) {
-      const prevPhoto = album.photos[currentIndex - 1]
-      router.push(`/albums/${albumId}/photos/${prevPhoto.id}`)
+      const prevIndex = currentIndex - 1
+      router.push(`/albums/${albumId}/photos/${prevIndex}`)
     }
   }
 
   const handleNextPhoto = () => {
     if (currentIndex < album.photos.length - 1) {
-      const nextPhoto = album.photos[currentIndex + 1]
-      router.push(`/albums/${albumId}/photos/${nextPhoto.id}`)
+      const nextIndex = currentIndex + 1
+      router.push(`/albums/${albumId}/photos/${nextIndex}`)
     }
   }
 
@@ -160,7 +171,7 @@ export default function PhotoDetailClient({ album, photo }: PhotoDetailClientPro
       
       const link = document.createElement('a')
       link.href = url
-      link.download = `${photo.title}_original.jpg`
+      link.download = `photo_${currentIndex + 1}_original.jpg`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
@@ -168,7 +179,7 @@ export default function PhotoDetailClient({ album, photo }: PhotoDetailClientPro
     } catch (error) {
       const link = document.createElement('a')
       link.href = getDownloadImageSrc(photo)
-      link.download = `${photo.title}_original.jpg`
+      link.download = `photo_${currentIndex + 1}_original.jpg`
       link.target = '_blank'
       link.click()
     }
@@ -177,8 +188,8 @@ export default function PhotoDetailClient({ album, photo }: PhotoDetailClientPro
   const handleShare = () => {
     if (navigator.share) {
       navigator.share({
-        title: photo.title,
-        text: `欣赏摄影作品《${photo.title}》`,
+        title: `${album.title} - ${getPhotoName(photo)}`,
+        text: `欣赏摄影作品《${album.title}》中的照片`,
         url: window.location.href
       })
     } else {
@@ -244,7 +255,7 @@ export default function PhotoDetailClient({ album, photo }: PhotoDetailClientPro
               >
                 <img
                   src={displayImageSrc}
-                  alt={photo.alt}
+                  alt={getPhotoName(photo)}
                   className={`max-w-full max-h-full object-contain
                     transition-all duration-500
                     ${isImageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}
@@ -291,52 +302,80 @@ export default function PhotoDetailClient({ album, photo }: PhotoDetailClientPro
               <div className="px-6 pb-6 overflow-y-auto max-h-[calc(80vh-4rem)]">
                 {/* Photo Title */}
                 <div className="text-center mb-6">
-                  <h1 className="text-2xl font-bold text-white mb-2">{photo.title}</h1>
+                  <h1 className="text-2xl font-bold text-white mb-2">{getPhotoName(photo)}</h1>
                   <div className="flex items-center justify-center space-x-2 text-gray-400">
                     <Calendar className="w-4 h-4" />
-                    <span className="text-sm">拍摄作品</span>
+                    <span className="text-sm">来自《{album.title}》</span>
                   </div>
                 </div>
 
-                {/* 其余信息内容保持不变，但适配移动端 */}
-                {photo.camera && (
+                {/* Image Info */}
+                {photo.info && (
                   <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700/50 mb-6">
-                    <div className="flex items-center space-x-3 mb-2">
+                    <div className="flex items-center space-x-3 mb-4">
                       <div className="p-2 bg-blue-600/20 rounded-lg">
                         <Camera className="w-5 h-5 text-blue-400" />
                       </div>
                       <div>
-                        <p className="text-white font-semibold">{photo.camera}</p>
-                        <p className="text-gray-400 text-sm">相机设备</p>
+                        <p className="text-white font-semibold">图片信息</p>
+                        <p className="text-gray-400 text-sm">{photo.info.width} × {photo.info.height}</p>
                       </div>
                     </div>
-                    {photo.settings && (
-                      <div className="flex items-center space-x-2 mt-3 pt-3 border-t border-gray-700/50">
-                        <Settings className="w-4 h-4 text-gray-400" />
-                        <span className="text-gray-300 text-sm">{photo.settings}</span>
+                    
+                    {/* 基本信息 */}
+                    <div className="grid grid-cols-2 gap-2 mb-4 text-sm">
+                      <div className="text-gray-400">格式: <span className="text-gray-300">{photo.info.format}</span></div>
+                      <div className="text-gray-400">大小: <span className="text-gray-300">{(photo.info.file_size / 1024 / 1024).toFixed(1)}MB</span></div>
+                    </div>
+
+                    {/* 相机信息 */}
+                    {photo.info.camera_make && (
+                      <div className="border-t border-gray-700/50 pt-3 mb-4">
+                        <h4 className="text-white font-medium mb-2 text-sm">📷 拍摄设备</h4>
+                        <div className="space-y-1 text-sm">
+                          <div className="text-gray-400">相机: <span className="text-gray-300">{photo.info.camera_make?.replace(/"/g, '')} {photo.info.camera_model?.replace(/"/g, '')}</span></div>
+                          {photo.info.lens_model && (
+                            <div className="text-gray-400">镜头: <span className="text-gray-300">{photo.info.lens_model?.replace(/"/g, '')}</span></div>
+                          )}
+                        </div>
                       </div>
                     )}
-                  </div>
-                )}
 
-                {/* Tags */}
-                {photo.tags && photo.tags.length > 0 && (
-                  <div className="mb-6">
-                    <div className="flex items-center space-x-2 mb-3">
-                      <Tag className="w-4 h-4 text-gray-400" />
-                      <span className="text-gray-400 text-sm font-medium">标签</span>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {photo.tags.map((tag) => (
-                        <span 
-                          key={tag}
-                          className="px-3 py-1 bg-blue-600/20 text-blue-300 text-sm rounded-full 
-                            border border-blue-600/30"
-                        >
-                          #{tag}
-                        </span>
-                      ))}
-                    </div>
+                    {/* 拍摄参数 */}
+                    {(photo.info.focal_length || photo.info.aperture || photo.info.exposure_time || photo.info.iso) && (
+                      <div className="border-t border-gray-700/50 pt-3 mb-4">
+                        <h4 className="text-white font-medium mb-2 text-sm">⚙️ 拍摄参数</h4>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          {photo.info.focal_length && (
+                            <div className="text-gray-400">焦距: <span className="text-gray-300">{photo.info.focal_length}mm</span></div>
+                          )}
+                          {photo.info.aperture && (
+                            <div className="text-gray-400">光圈: <span className="text-gray-300">f/{photo.info.aperture}</span></div>
+                          )}
+                          {photo.info.exposure_time && (
+                            <div className="text-gray-400">快门: <span className="text-gray-300">{photo.info.exposure_time}</span></div>
+                          )}
+                          {photo.info.iso && (
+                            <div className="text-gray-400">ISO: <span className="text-gray-300">{photo.info.iso}</span></div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 其他信息 */}
+                    {(photo.info.flash || photo.info.white_balance) && (
+                      <div className="border-t border-gray-700/50 pt-3">
+                        <h4 className="text-white font-medium mb-2 text-sm">🎨 其他设置</h4>
+                        <div className="space-y-1 text-sm">
+                          {photo.info.flash && (
+                            <div className="text-gray-400">闪光灯: <span className="text-gray-300">{photo.info.flash}</span></div>
+                          )}
+                          {photo.info.white_balance && (
+                            <div className="text-gray-400">白平衡: <span className="text-gray-300">{photo.info.white_balance}</span></div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -409,7 +448,7 @@ export default function PhotoDetailClient({ album, photo }: PhotoDetailClientPro
                 <div className="relative group cursor-pointer">
                   <img
                     src={displayImageSrc}
-                    alt={photo.alt}
+                    alt={getPhotoName(photo)}
                     className={`max-w-full max-h-[60vh] lg:max-h-[calc(100vh-8rem)] object-contain 
                       transition-all duration-500 rounded-lg shadow-2xl
                       ${isImageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}
@@ -453,52 +492,101 @@ export default function PhotoDetailClient({ album, photo }: PhotoDetailClientPro
               
               {/* Photo Title */}
               <div className="text-center lg:text-left">
-                <h1 className="text-2xl lg:text-3xl font-bold text-white mb-2">{photo.title}</h1>
+                <h1 className="text-2xl lg:text-3xl font-bold text-white mb-2">{getPhotoName(photo)}</h1>
                 <div className="flex items-center justify-center lg:justify-start space-x-2 text-gray-400">
                   <Calendar className="w-4 h-4" />
-                  <span className="text-sm">拍摄作品</span>
+                  <span className="text-sm">来自《{album.title}》</span>
                 </div>
               </div>
               
-              {/* Camera Info */}
-              {photo.camera && (
-                <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700/50">
-                  <div className="flex items-center space-x-3 mb-2">
-                    <div className="p-2 bg-blue-600/20 rounded-lg">
-                      <Camera className="w-5 h-5 text-blue-400" />
+              {/* Image Info */}
+              {photo.info && (
+                <div className="space-y-4">
+                  {/* 基本信息 */}
+                  <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700/50">
+                    <div className="flex items-center space-x-3 mb-3">
+                      <div className="p-2 bg-blue-600/20 rounded-lg">
+                        <Camera className="w-5 h-5 text-blue-400" />
+                      </div>
+                      <div>
+                        <p className="text-white font-semibold">图片信息</p>
+                        <p className="text-gray-400 text-sm">{photo.info.width} × {photo.info.height}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-white font-semibold">{photo.camera}</p>
-                      <p className="text-gray-400 text-sm">相机设备</p>
+                    <div className="space-y-2 text-sm">
+                      <div className="text-gray-400">格式: <span className="text-gray-300 uppercase">{photo.info.format}</span></div>
+                      <div className="text-gray-400">大小: <span className="text-gray-300">{(photo.info.file_size / 1024 / 1024).toFixed(2)} MB</span></div>
+                      {photo.info.created_at && (
+                        <div className="text-gray-400">拍摄时间: <span className="text-gray-300">{new Date(photo.info.created_at).toLocaleString('zh-CN')}</span></div>
+                      )}
                     </div>
                   </div>
-                  {photo.settings && (
-                    <div className="flex items-center space-x-2 mt-3 pt-3 border-t border-gray-700/50">
-                      <Settings className="w-4 h-4 text-gray-400" />
-                      <span className="text-gray-300 text-sm">{photo.settings}</span>
+
+                  {/* 相机设备 */}
+                  {(photo.info.camera_make || photo.info.lens_model) && (
+                    <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700/50">
+                      <div className="flex items-center space-x-2 mb-3">
+                        <div className="p-1.5 bg-emerald-600/20 rounded-lg">
+                          <Camera className="w-4 h-4 text-emerald-400" />
+                        </div>
+                        <p className="text-white font-medium">相机设备</p>
+                      </div>
+                      <div className="space-y-2 text-sm">
+                        {photo.info.camera_make && (
+                          <div className="text-gray-400">机身: <span className="text-gray-300">{photo.info.camera_make} {photo.info.camera_model}</span></div>
+                        )}
+                        {photo.info.lens_model && (
+                          <div className="text-gray-400">镜头: <span className="text-gray-300">{photo.info.lens_model}</span></div>
+                        )}
+                      </div>
                     </div>
                   )}
-                </div>
-              )}
 
-              {/* Tags */}
-              {photo.tags && photo.tags.length > 0 && (
-                <div>
-                  <div className="flex items-center space-x-2 mb-3">
-                    <Tag className="w-4 h-4 text-gray-400" />
-                    <span className="text-gray-400 text-sm font-medium">标签</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {photo.tags.map((tag) => (
-                      <span 
-                        key={tag}
-                        className="px-3 py-1 bg-blue-600/20 text-blue-300 text-sm rounded-full 
-                          border border-blue-600/30 hover:bg-blue-600/30 transition-colors"
-                      >
-                        #{tag}
-                      </span>
-                    ))}
-                  </div>
+                  {/* 拍摄参数 */}
+                  {(photo.info.iso || photo.info.aperture || photo.info.exposure_time || photo.info.focal_length) && (
+                    <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700/50">
+                      <div className="flex items-center space-x-2 mb-3">
+                        <div className="p-1.5 bg-yellow-600/20 rounded-lg">
+                          <div className="w-4 h-4 bg-yellow-400 rounded-sm"></div>
+                        </div>
+                        <p className="text-white font-medium">拍摄参数</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        {photo.info.iso && (
+                          <div className="text-gray-400">ISO: <span className="text-gray-300 font-mono">{photo.info.iso}</span></div>
+                        )}
+                        {photo.info.aperture && (
+                          <div className="text-gray-400">光圈: <span className="text-gray-300 font-mono">f/{photo.info.aperture}</span></div>
+                        )}
+                        {photo.info.exposure_time && (
+                          <div className="text-gray-400 col-span-2">快门: <span className="text-gray-300 font-mono">{photo.info.exposure_time}</span></div>
+                        )}
+                        {photo.info.focal_length && (
+                          <div className="text-gray-400 col-span-2">焦距: <span className="text-gray-300 font-mono">{photo.info.focal_length}mm</span></div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 其他信息 */}
+                  {(photo.info.flash || photo.info.white_balance) && (
+                    <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700/50">
+                      <div className="flex items-center space-x-2 mb-3">
+                        <div className="p-1.5 bg-purple-600/20 rounded-lg">
+                          <div className="w-4 h-4 bg-purple-400 rounded-full"></div>
+                        </div>
+                        <p className="text-white font-medium">拍摄设置</p>
+                      </div>
+                      <div className="space-y-1 text-sm">
+                        {photo.info.flash && (
+                          <div className="text-gray-400">闪光灯: <span className="text-gray-300">{photo.info.flash}</span></div>
+                        )}
+                        {photo.info.white_balance && (
+                          <div className="text-gray-400">白平衡: <span className="text-gray-300">{photo.info.white_balance}</span></div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

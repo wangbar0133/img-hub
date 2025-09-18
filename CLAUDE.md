@@ -40,17 +40,19 @@ The Dockerfile is optimized for minimal image size through:
 
 - **Frontend**: Next.js 14 with App Router, TypeScript, Tailwind CSS
 - **UI**: Framer Motion for animations, Lucide React for icons
-- **Deployment**: Docker + Nginx
-- **Image Processing**: Server-side Sharp library processing
+- **Backend**: Rust backend API server (external)
+- **Database**: MongoDB (managed by backend API)
+- **Deployment**: Docker + Nginx for frontend, separate backend deployment
 
 ### Core Structure
 
 #### Data Flow
 
-- Image data is managed through SQLite database - the single source of truth
-- Images are stored in 4-tier structure: thumbnail (400px) → src (800px) → detailSrc (900px) → originalSrc (full size)
-- Data access through `lib/models/album.ts` and API routes
-- TypeScript types defined in `types/index.ts`
+- Image data is managed through external Rust backend API
+- Frontend acts as API proxy/client to backend services
+- Images are processed by backend in 4-tier structure: thumbnail (300px) → src (800px) → detail (900px) → original (full size)
+- Data access through REST API calls to backend endpoints
+- TypeScript types defined in `types/index.ts` match backend API responses
 
 #### Routing Structure
 
@@ -77,47 +79,48 @@ The Dockerfile is optimized for minimal image size through:
 
 ### Image Management System
 
-Web-based admin interface at `/admin` provides complete content management:
+Content management is handled by the external backend API:
 
 #### Key Features
 
-- **Web-based upload**: Upload multiple images through browser interface
-- **Four-tier processing**: Server-side Sharp processing generates thumbnails, display, detail, and original images
-- **Album creation**: Create and organize albums with metadata
-- **Cover photo selection**: Choose cover images for albums with visual feedback
-- **Real-time preview**: See results immediately in admin dashboard
+- **Backend API upload**: Images uploaded and processed by Rust backend
+- **Four-tier processing**: Backend generates thumbnails (300px), display (800px), detail (900px), and original images
+- **Album management**: Create and organize albums through backend API
+- **MongoDB storage**: Album metadata and image info stored in MongoDB
+- **Static file serving**: Backend serves processed images via `/public/` endpoint
 
-#### Admin Authentication
+#### API Integration
 
-- JWT-based authentication system
-- Configurable admin credentials via environment variables
-- Secure cookie-based session management
+- Frontend proxies requests to backend API (default: http://localhost:8000)
+- Environment variable `BACKEND_URL` configures backend location
+- All CRUD operations handled by backend REST API
 
 ### Deployment Strategy
 
 #### Local Development
 
-Next.js development server with API routes for admin functionality.
+- Next.js development server for frontend
+- External Rust backend API server
+- Configure `BACKEND_URL` environment variable to point to backend
 
 #### Production (Docker)
 
-- Full-stack application with Next.js API routes
-- Server-side image processing with Sharp library
-- Data persistence through Docker volumes
-- JWT authentication for admin access
+- Frontend: Next.js application in Docker container
+- Backend: Separate Rust API server deployment
+- MongoDB: Database managed by backend
+- Static files: Served by backend at `/public/` endpoint
 
 ### Important Files
 
-- `lib/database.ts` - SQLite database connection and schema
-- `lib/models/album.ts` - Album data model and database operations
-- `lib/imageProcessor.ts` - Server-side image processing with Sharp
-- `app/admin/` - Admin interface components and pages
-- `app/api/admin/` - Admin API routes for authentication and data management
-- `docker-compose.yml` - Container orchestration with data volume mounts
+- `app/api/albums/` - Frontend API routes that proxy to backend
+- `lib/albumUtils.ts` - Helper functions for working with album data
+- `types/index.ts` - TypeScript interfaces matching backend API responses
+- `docker-compose.yml` - Container orchestration for frontend deployment
 
 ### Development Notes
 
-- Use the web admin interface at `/admin` for all content management
-- Images are processed server-side with automatic optimization
-- Album data is stored in SQLite database with type safety
-- Admin credentials should be configured via environment variables for production
+- Backend API handles all content management and image processing
+- Frontend acts as a proxy and UI layer for the backend services
+- Album data is fetched from backend API and cached on frontend
+- Configure `BACKEND_URL` and `NEXT_PUBLIC_BACKEND_URL` environment variables
+- All image uploads and processing handled by external backend

@@ -1,40 +1,47 @@
 import { NextResponse } from 'next/server'
-import { AlbumModel } from '@/lib/models/album'
-import { addLog } from '@/lib/logging'
+import { AlbumsResponse } from '@/types'
 
-// GET - 获取所有影集（公共API）
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000'
+
+// GET - 获取所有影集（代理到新后端API）
 export async function GET() {
   try {
-    addLog('info', 'Public albums API requested')
+    console.log('Proxying albums request to backend:', `${BACKEND_URL}/api/albums`)
     
-    const albums = await AlbumModel.getAllAlbums()
-    
-    addLog('info', `Public albums API: Retrieved ${albums.length} albums`)
-    
-    // 临时调试：记录封面信息
-    albums.forEach(album => {
-      console.log(`Album ${album.id} (${album.title}): coverImage=${album.coverImage}, coverPhotoId=${album.coverPhotoId}`)
+    const response = await fetch(`${BACKEND_URL}/api/albums`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      // 禁用缓存以获取最新数据
+      cache: 'no-store'
     })
     
-    const response = NextResponse.json({
-      success: true,
-      albums,
-      timestamp: Date.now() // 添加时间戳确保数据新鲜度
-    })
+    if (!response.ok) {
+      throw new Error(`Backend responded with status: ${response.status}`)
+    }
+    
+    const data: AlbumsResponse = await response.json()
+    
+    console.log(`Retrieved ${data.albums?.length || 0} albums from backend`)
+    
+    const nextResponse = NextResponse.json(data)
     
     // 设置无缓存头，确保返回最新数据
-    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate')
-    response.headers.set('Pragma', 'no-cache')
-    response.headers.set('Expires', '0')
-    response.headers.set('ETag', `"albums-${Date.now()}"`) // 添加动态ETag
+    nextResponse.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate')
+    nextResponse.headers.set('Pragma', 'no-cache')
+    nextResponse.headers.set('Expires', '0')
     
-    return response
+    return nextResponse
     
   } catch (error) {
-    addLog('error', 'Public albums API error', { error: error instanceof Error ? error.message : String(error) })
-    console.error('Albums API error:', error)
+    console.error('Albums API proxy error:', error)
     return NextResponse.json(
-      { success: false, error: '服务器错误' },
+      { 
+        success: false, 
+        msg: error instanceof Error ? error.message : 'Backend connection failed',
+        albums: []
+      } as AlbumsResponse,
       { status: 500 }
     )
   }

@@ -1,24 +1,63 @@
 version: '3.8'
 
 services:
-  img-hub:
-    build: .  # 使用本地构建而不是Docker Hub镜像
-    container_name: img-hub-server
+  # MongoDB 数据库
+  mongodb:
+    image: mongo:7.0
+    container_name: img-hub-mongodb
     restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-admin123}
+      MONGO_INITDB_DATABASE: ${MONGO_DATABASE:-img-hub}
     volumes:
-      # 持久化数据目录 (包含数据库文件)
-      - ./data:/app/data:rw
-      - ./public/images:/app/public/images:rw
-      # 应用日志持久化
-      - ./logs:/app/logs:rw
-    
+      - mongodb_data:/data/db
+    networks:
+      - img-hub-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.runCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Rust 后端 API (从 Docker Hub 拉取)
+  img-hub-backend:
+    image: ${DOCKER_USERNAME}/img-hub-backend:${IMAGE_TAG:-latest}
+    container_name: img-hub-backend
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=mongodb://${MONGO_ROOT_USERNAME:-admin}:${MONGO_ROOT_PASSWORD:-admin123}@mongodb:27017/${MONGO_DATABASE:-img-hub}?authSource=admin
+      - RUST_LOG=${RUST_LOG:-info}
+      - PORT=8000
+      - UPLOAD_DIR=/app/static
+    volumes:
+      - ./static:/app/static
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - img-hub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Next.js 前端 (从 Docker Hub 拉取)
+  img-hub-frontend:
+    image: ${DOCKER_USERNAME}/img-hub-frontend:${IMAGE_TAG:-latest}
+    container_name: img-hub-frontend
+    restart: unless-stopped
     environment:
       - NODE_ENV=production
-      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
-      - JWT_SECRET=${JWT_SECRET:-img-hub-admin-secret-key-2024}
       - PORT=3000
-      - FORCE_HTTPS=${FORCE_HTTPS:-true}
+      - BACKEND_URL=http://img-hub-backend:8000
+      - NEXT_PUBLIC_BACKEND_URL=https://${DOMAIN_NAME}
+    depends_on:
+      img-hub-backend:
+        condition: service_healthy
     networks:
       - img-hub-network
     healthcheck:
@@ -28,6 +67,18 @@ services:
       retries: 3
       start_period: 30s
 
+  # Certbot for Let's Encrypt SSL certificates
+  certbot:
+    image: certbot/certbot
+    container_name: img-hub-certbot
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt
+      - /var/www/certbot:/var/www/certbot
+    command: certonly --webroot -w /var/www/certbot --email ${SSL_EMAIL} -d ${DOMAIN_NAME} -d www.${DOMAIN_NAME} --agree-tos --no-eff-email
+    depends_on:
+      - nginx
+
+  # Nginx 反向代理 with SSL
   nginx:
     image: nginx:alpine
     container_name: img-hub-nginx
@@ -36,13 +87,26 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx-https.conf:/etc/nginx/conf.d/default.conf:ro
-      # SSL证书挂载 (如果启用HTTPS)
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/www/certbot:/var/www/certbot:ro
     depends_on:
-      - img-hub
+      img-hub-frontend:
+        condition: service_healthy
+      img-hub-backend:
+        condition: service_healthy
     networks:
       - img-hub-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  mongodb_data:
+    driver: local
 
 networks:
   img-hub-network:

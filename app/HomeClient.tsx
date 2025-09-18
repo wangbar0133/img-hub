@@ -1,15 +1,17 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
 import { Album } from '@/types'
+import { getAlbumPhotoCount } from '@/lib/albumUtils'
+import FeaturedAlbumsSection from '@/components/FeaturedAlbumsSection'
 
 interface HomeClientProps {
   initialAlbums: Album[]
+  featuredAlbums: Album[]
 }
 
-export default function HomeClient({ initialAlbums }: HomeClientProps) {
-  const [albums] = useState<Album[]>(initialAlbums)
+export default function HomeClient({ initialAlbums, featuredAlbums }: HomeClientProps) {
+  const albums = initialAlbums
 
   return (
     <>
@@ -41,50 +43,7 @@ export default function HomeClient({ initialAlbums }: HomeClientProps) {
       </section>
 
       {/* Featured Albums Section */}
-      <section className="py-20 px-4 bg-white">
-        <div className="max-w-7xl mx-auto text-center">
-          <h2 className="text-4xl md:text-5xl font-bold text-photo-dark mb-4">
-            精选影集
-          </h2>
-          
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            {albums.filter(album => album.featured).map((album, index) => (
-              <Link 
-                key={album.id}
-                href={`/albums/${album.id}`}
-                className={`relative group cursor-pointer rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 block ${
-                  index === 0 ? 'md:col-span-2 h-80' : 'h-60'
-                }`}
-              >
-                <img
-                  src={album.coverImage}
-                  alt={album.title}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                />
-                <div className="absolute inset-0 bg-black/40 group-hover:bg-black/60 transition-colors duration-300">
-                  <div className="absolute inset-0 flex items-center justify-center text-center text-white p-6">
-                    <div>
-                      <h3 className="text-2xl md:text-3xl font-bold mb-4">{album.title}</h3>
-                      <div className="inline-flex items-center space-x-2 text-sm bg-white/20 backdrop-blur-sm rounded-full px-4 py-2">
-                        <span>{album.photoCount} 张照片</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-          
-          <div className="mt-12">
-            <Link
-              href="/albums"
-              className="bg-photo-dark text-white px-8 py-3 rounded-full font-medium hover:bg-gray-800 transition-colors"
-            >
-              查看所有影集
-            </Link>
-          </div>
-        </div>
-      </section>
+      <FeaturedAlbumsSection albums={featuredAlbums} />
 
       {/* Statistics Section */}
       <section className="py-20 px-4 bg-photo-light">
@@ -98,7 +57,7 @@ export default function HomeClient({ initialAlbums }: HomeClientProps) {
             </div>
             <div>
               <div className="text-4xl md:text-5xl font-bold text-photo-dark mb-2">
-                {albums.reduce((total, album) => total + album.photoCount, 0)}
+                {albums.reduce((total, album) => total + getAlbumPhotoCount(album), 0)}
               </div>
               <div className="text-gray-600 font-medium">精美照片</div>
             </div>

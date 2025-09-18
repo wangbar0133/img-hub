@@ -5,10 +5,6 @@ import { useParams } from 'next/navigation'
 import { Album } from '@/types'
 import AlbumDetailClient from './AlbumDetailClient'
 
-// 客户端版本的 getAlbumById 函数
-function getAlbumById(albums: Album[], id: string): Album | undefined {
-  return albums.find(album => album.id === id)
-}
 
 export default function AlbumDetailPage() {
   const params = useParams()
@@ -20,7 +16,7 @@ export default function AlbumDetailPage() {
   useEffect(() => {
     const fetchAlbum = async () => {
       try {
-        const response = await fetch(`/api/albums?t=${Date.now()}`, {
+        const response = await fetch(`/api/albums/${albumId}?t=${Date.now()}`, {
           cache: 'no-store',
           headers: {
             'Content-Type': 'application/json',
@@ -33,13 +29,10 @@ export default function AlbumDetailPage() {
         
         const data = await response.json()
         
-        if (data.success) {
-          const foundAlbum = getAlbumById(data.albums, albumId)
-          if (foundAlbum) {
-            setAlbum(foundAlbum)
-          } else {
-            setNotFound(true)
-          }
+        if (data.success && data.album) {
+          setAlbum(data.album)
+        } else {
+          setNotFound(true)
         }
       } catch (err) {
         console.error('Error fetching album:', err)

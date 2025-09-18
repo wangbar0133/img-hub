@@ -12,8 +12,6 @@ dist/
 
 # Environment variables
 .env*
-.env.production
-.env.deploy
 
 # IDE
 .vscode/
@@ -30,11 +28,6 @@ Thumbs.db
 
 # Logs
 *.log
-logs/
-
-# ImgHub specific
-data/
-public/images/
 
 # Temporary files
 *.tmp
@@ -43,5 +36,3 @@ public/images/
 
 # Build info
 *.tsbuildinfo
-.build_info
-monitor_service.sh

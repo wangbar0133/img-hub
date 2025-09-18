@@ -1,58 +1,82 @@
 import { Album } from '@/types'
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
+
 /**
- * 获取影集的实际封面图片URL
- * 如果指定了 coverPhotoId，则使用对应照片作为封面
- * 否则使用 coverImage 字段
+ * 获取影集的封面图片URL
+ * 使用新后端API的cover字段
  */
 export function getAlbumCoverImage(album: Album): string {
-  // 如果有指定的封面照片ID，查找对应的照片
-  if (album.coverPhotoId && album.photos && album.photos.length > 0) {
-    const coverPhoto = album.photos.find(photo => photo.id === album.coverPhotoId)
-    if (coverPhoto) {
-      return coverPhoto.src
+  if (album.cover) {
+    // 如果cover是完整URL，直接返回
+    if (album.cover.startsWith('http')) {
+      return album.cover
     }
+    // 否则构建完整URL
+    return `${BACKEND_URL}/public/${album.cover}`
   }
   
-  // 回退到原有的 coverImage 字段
-  return album.coverImage || (album.photos && album.photos.length > 0 ? album.photos[0].src : '')
+  // 回退到第一张照片的thumbnail
+  if (album.photos && album.photos.length > 0) {
+    const firstPhoto = album.photos[0]
+    return `${BACKEND_URL}/public/${firstPhoto.thumbnail}`
+  }
+  
+  return ''
 }
 
 /**
  * 获取影集封面照片的缩略图
  */
 export function getAlbumCoverThumbnail(album: Album): string {
-  if (album.coverPhotoId && album.photos && album.photos.length > 0) {
-    const coverPhoto = album.photos.find(photo => photo.id === album.coverPhotoId)
-    if (coverPhoto && coverPhoto.thumbnail) {
-      return coverPhoto.thumbnail
+  if (album.cover) {
+    // 如果cover是完整URL，直接返回
+    if (album.cover.startsWith('http')) {
+      return album.cover
     }
+    // 否则构建完整URL - 假设封面已经是合适的缩略图尺寸
+    return `${BACKEND_URL}/public/${album.cover}`
   }
   
   // 回退到第一张照片的缩略图
-  if (album.photos && album.photos.length > 0 && album.photos[0].thumbnail) {
-    return album.photos[0].thumbnail
+  if (album.photos && album.photos.length > 0) {
+    const firstPhoto = album.photos[0]
+    return `${BACKEND_URL}/public/${firstPhoto.thumbnail}`
   }
   
-  // 最后回退到原有的 coverImage
-  return album.coverImage || ''
+  return ''
 }
 
 /**
- * 更新影集数据，确保 coverImage 与 coverPhotoId 保持同步
+ * 获取照片的完整URL
  */
-export function updateAlbumCoverImage(album: Album): Album {
-  const coverImage = getAlbumCoverImage(album)
-  
-  return {
-    ...album,
-    coverImage
+export function getPhotoUrl(filename: string): string {
+  if (!filename) {
+    return ''
   }
+  if (filename.startsWith('http')) {
+    return filename
+  }
+  return `${BACKEND_URL}/public/${filename}`
 }
 
 /**
- * 批量更新多个影集的封面图片
+ * 计算影集照片数量（与新API结构兼容）
  */
-export function updateAlbumsCoverImages(albums: Album[]): Album[] {
-  return albums.map(album => updateAlbumCoverImage(album))
+export function getAlbumPhotoCount(album: Album): number {
+  return album.photos?.length || 0
+}
+
+/**
+ * 格式化时间字符串
+ */
+export function formatAlbumDate(dateString: string): string {
+  try {
+    return new Date(dateString).toLocaleDateString('zh-CN', {
+      year: 'numeric',
+      month: 'long'
+    })
+  } catch {
+    return dateString
+  }
 }
