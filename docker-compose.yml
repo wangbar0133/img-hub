@@ -51,10 +51,10 @@ services:
     container_name: img-hub-frontend
     restart: unless-stopped
     environment:
-      - NODE_ENV=${NODE_ENV:-production}
+      - NODE_ENV=production
       - PORT=3000
       - BACKEND_URL=http://img-hub-backend:8000
-      - NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL:-https://${DOMAIN_NAME:-localhost}}
+      - NEXT_PUBLIC_BACKEND_URL=https://img.neicun.online
     depends_on:
       img-hub-backend:
         condition: service_healthy
