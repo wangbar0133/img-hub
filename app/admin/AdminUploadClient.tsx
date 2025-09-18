@@ -20,10 +20,6 @@ export default function AdminUploadClient() {
 
   // 处理文件选择
   const handleFileSelect = (files: FileList | null) => {
-    if (files && files.length > 10) {
-      alert('最多只能上传10个文件')
-      return
-    }
     setSelectedFiles(files)
   }
 
@@ -265,7 +261,7 @@ export default function AdminUploadClient() {
                     拖拽图片到此处，或点击选择文件
                   </p>
                   <p className="text-sm text-gray-500 mt-1">
-                    支持 JPEG, PNG 格式，最多10个文件
+                    支持 JPEG, PNG 格式
                   </p>
                 </div>
               </div>
