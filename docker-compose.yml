@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # MongoDB 数据库
+  # MongoDB 数据库 (无认证)
   mongodb:
     image: mongo:7.0
     container_name: img-hub-mongodb
@@ -25,11 +25,7 @@ services:
     container_name: img-hub-backend
     restart: unless-stopped
     environment:
-      - DATABASE_URL=mongodb://${MONGO_ROOT_USERNAME:-admin}:${MONGO_ROOT_PASSWORD:-admin123}@mongodb:27017/${MONGO_DATABASE:-img-hub}?authSource=admin
       - RUST_LOG=${RUST_LOG:-info}
-      - PORT=${BACKEND_PORT:-8000}
-      - HOST=0.0.0.0
-      - UPLOAD_DIR=/app/static
     volumes:
       - ./static:/app/static
     depends_on:
@@ -52,7 +48,7 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-production}
       - PORT=3000
-      - BACKEND_URL=http://img-hub-backend:${BACKEND_PORT:-8000}
+      - BACKEND_URL=http://img-hub-backend:8000
       - NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL:-https://${DOMAIN_NAME:-localhost}}
     depends_on:
       img-hub-backend:
@@ -65,17 +61,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
-
-  # Certbot for Let's Encrypt SSL certificates
-  certbot:
-    image: certbot/certbot
-    container_name: img-hub-certbot
-    volumes:
-      - /etc/letsencrypt:/etc/letsencrypt
-      - /var/www/certbot:/var/www/certbot
-    command: certonly --webroot -w /var/www/certbot --email ${SSL_EMAIL} -d ${DOMAIN_NAME} -d www.${DOMAIN_NAME} --agree-tos --no-eff-email
-    depends_on:
-      - nginx
 
   # Nginx 反向代理 with SSL
   nginx:
@@ -102,6 +87,18 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+
+  # Certbot for Let's Encrypt SSL certificates (只在需要时运行)
+  certbot:
+    image: certbot/certbot
+    container_name: img-hub-certbot
+    profiles: ["ssl"]  # 只在指定profile时运行
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt
+      - /var/www/certbot:/var/www/certbot
+    command: certonly --webroot -w /var/www/certbot --email ${SSL_EMAIL} -d ${DOMAIN_NAME} -d www.${DOMAIN_NAME} --agree-tos --no-eff-email --non-interactive
+    depends_on:
+      - nginx
 
 volumes:
   mongodb_data:
