@@ -28,6 +28,7 @@ services:
       - DATABASE_URL=mongodb://${MONGO_ROOT_USERNAME:-admin}:${MONGO_ROOT_PASSWORD:-admin123}@mongodb:27017/${MONGO_DATABASE:-img-hub}?authSource=admin
       - RUST_LOG=${RUST_LOG:-info}
       - PORT=${BACKEND_PORT:-8000}
+      - HOST=0.0.0.0
       - UPLOAD_DIR=/app/static
     volumes:
       - ./static:/app/static
