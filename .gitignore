@@ -11,7 +11,13 @@ build/
 dist/
 
 # Environment variables
-.env*
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+# Allow .env.example to be committed
+!.env.example
 
 # IDE
 .vscode/
@@ -36,3 +42,14 @@ Thumbs.db
 
 # Build info
 *.tsbuildinfo
+
+# Docker
+docker-compose.override.yml
+
+# Static files (if using local development)
+static/
+public/images/
+
+# Backup files
+*.backup
+*.bak
