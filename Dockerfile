@@ -53,8 +53,7 @@ USER nextjs
 # Environment variables
 ENV NODE_ENV=production \
     PORT=3000 \
-    BACKEND_URL=http://localhost:8000 \
-    NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
+    BACKEND_URL=http://localhost:8000
 
 EXPOSE 3000
 

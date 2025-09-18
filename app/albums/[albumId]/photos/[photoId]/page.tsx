@@ -20,7 +20,7 @@ export default function PhotoDetailPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch(`/api/albums/${albumId}?t=${Date.now()}`, {
+        const response = await fetch(`/api/album/${albumId}?t=${Date.now()}`, {
           cache: 'no-store',
           headers: {
             'Content-Type': 'application/json',

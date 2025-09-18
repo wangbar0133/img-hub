@@ -46,7 +46,7 @@ export default function AlbumManageClient() {
   const setCover = async (albumId: string, coverImage: string) => {
     setProcessing(true)
     try {
-      const response = await fetch(`/api/admin/albums/${albumId}/cover`, {
+      const response = await fetch(`/api/album/${albumId}/cover`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -76,7 +76,7 @@ export default function AlbumManageClient() {
   const deleteAlbum = async (albumId: string) => {
     setProcessing(true)
     try {
-      const response = await fetch(`/api/admin/albums/${albumId}`, {
+      const response = await fetch(`/api/album/${albumId}`, {
         method: 'DELETE',
       })
 

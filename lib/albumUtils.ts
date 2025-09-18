@@ -1,6 +1,6 @@
 import { Album } from '@/types'
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
+const BACKEND_URL = 'https://img.neicun.online'
 
 /**
  * 获取影集的封面图片URL
