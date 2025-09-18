@@ -7,8 +7,6 @@ services:
     container_name: img-hub-mongodb
     restart: unless-stopped
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-admin}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-admin123}
       MONGO_INITDB_DATABASE: ${MONGO_DATABASE:-img-hub}
     volumes:
       - mongodb_data:/data/db
@@ -23,7 +21,7 @@ services:
 
   # Rust 后端 API (从 Docker Hub 拉取)
   img-hub-backend:
-    image: ${DOCKER_USERNAME:-your-dockerhub-username}/img-hub-backend:${IMAGE_TAG:-latest}
+    image: ${DOCKER_USERNAME:-wangbar01334}/img-hub-backend:${IMAGE_TAG:-latest}
     container_name: img-hub-backend
     restart: unless-stopped
     environment:
@@ -47,7 +45,7 @@ services:
 
   # Next.js 前端 (从 Docker Hub 拉取)
   img-hub-frontend:
-    image: ${DOCKER_USERNAME:-your-dockerhub-username}/img-hub-frontend:${IMAGE_TAG:-latest}
+    image: ${DOCKER_USERNAME:-wangbar01334}/img-hub-frontend:${IMAGE_TAG:-latest}
     container_name: img-hub-frontend
     restart: unless-stopped
     environment:
