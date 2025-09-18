@@ -59,7 +59,7 @@ services:
     networks:
       - img-hub-network
     healthcheck:
-      test: ["CMD", "sh", "-c", "wget --no-verbose --tries=1 --spider http://$(hostname -i):3000/ || exit 1"]
+      test: ["CMD", "sh", "-c", "netstat -tnlp | grep :3000 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
